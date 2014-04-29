@@ -1,4 +1,4 @@
-![Gabs](http://www.creepybit.co.uk/images/gabs_logo.png "Gabs")
+![#Gabs](http://www.creepybit.co.uk/images/gabs_logo.png "Gabs")
 
 Gabs is a small utility for dealing with dynamic or unknown JSON structures in golang. It's pretty much just a helpful wrapper around the golang json.Marshal/json.Unmarshal behaviour and map[string]interface{} objects.
 
@@ -10,7 +10,9 @@ https://godoc.org/github.com/Jeffail/gabs
 go get github.com/jeffail/gabs
 ```
 
-##How to use:
+##How to use
+
+###Parsing JSON
 
 ```go
 ...
@@ -36,6 +38,8 @@ if err != nil {
 /* Search returns an object of the same type as jsonParsed which should contain the target
  * data. Data returns the interface{} wrapped target object, it's then safe to attempt to cast
  * this object in order to determine whether the search obtained what you expected.
+ *
+ * These calls will accept a zero or greater number of string args.
  */
 if valueOne, ok := jsonParsed.Search("outter", "inner", "value1").Data().(float64); ok {
 	// outter.inner.value1 was found and its value is now stored in valueOne.
@@ -101,6 +105,52 @@ if english_places := json2.Search("places").Data(); english_places != nil {
 			]
 		}
 */
+
+...
+```
+
+###Converting back to JSON
+
+This is the easiest part:
+
+```go
+...
+
+jsonParsedObj := gabs.ParseJson([]byte(`{
+	"outter":{
+		"values":{
+			"first":10,
+			"second":11
+		}
+	},
+	"outter2":"hello world"
+}`))
+
+jsonOutput := jsonParsedObj.String()
+// Becomes `{"outter":{"values":{"first":10,"second":11}},"outter2":"hello world"}`
+
+...
+```
+
+And to serialize a specific segment is as simple as:
+
+```go
+...
+
+jsonParsedObj := gabs.ParseJson([]byte(`{
+	"outter":{
+		"values":{
+			"first":10,
+			"second":11
+		}
+	},
+	"outter2":"hello world"
+}`))
+
+jsonOutput := jsonParsedObj.Search("outter").String()
+// Becomes `{"values":{"first":10,"second":11}}`
+
+// If, however, "outter" was not found, or the container was invalid, String() returns "{}"
 
 ...
 ```

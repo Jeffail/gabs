@@ -54,6 +54,14 @@ func TestModify(t *testing.T) {
 	} else {
 		t.Errorf("Didn't find test.value")
 	}
+
+	if out := val.String(); `{"test":{"value":45},"test2":20}` != out {
+		t.Errorf("Incorrectly serialized: %v", out)
+	}
+
+	if out := val.Search("test").String(); `{"value":45}` != out {
+		t.Errorf("Incorrectly serialized: %v", out)
+	}
 }
 
 func TestArrays(t *testing.T) {

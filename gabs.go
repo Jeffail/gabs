@@ -80,6 +80,16 @@ func (g *Container) Set(value interface{}, hierarchy ...string) error {
 }
 
 /*
+String - Converts the contained object back to a JSON formatted string.
+*/
+func (g *Container) String() string {
+	if bytes, err := json.Marshal(g.object); err == nil {
+		return string(bytes)
+	}
+	return "{}"
+}
+
+/*
 ParseJson - Convert a string into a representation of the parsed JSON.
 */
 func ParseJson(sample []byte) (*Container, error) {
@@ -92,6 +102,7 @@ func ParseJson(sample []byte) (*Container, error) {
 	if _, ok := gabs.object.(map[string]interface{}); ok {
 		return &gabs, nil
 	}
+
 	return nil, errors.New("json appears to contain no data.")
 }
 
