@@ -35,16 +35,18 @@ if err != nil {
 	// You done goofed
 }
 
-/* Search returns an object of the same type as jsonParsed which should contain the target
- * data. Data returns the interface{} wrapped target object, it's then safe to attempt to cast
- * this object in order to determine whether the search obtained what you expected.
+/* Search returns an object of the same type as jsonParsed which should
+ * contain the target data. Data returns the interface{} wrapped target
+ * object, it's then safe to attempt to cast this object in order to
+ * determine whether the search obtained what you expected.
  *
  * These calls will accept a zero or greater number of string args.
  */
 if valueOne, ok := jsonParsed.Search("outter", "inner", "value1").Data().(float64); ok {
 	// outter.inner.value1 was found and its value is now stored in valueOne.
 } else {
-	// outter.inner.value1 was either non-existant in the JSON structure or was of a different type.
+	// outter.inner.value1 was either non-existant in the JSON structure or
+	// was of a different type.
 }
 
 if err := jsonParsed.Set(10, "outter", "inner", "value2"); err == nil {
@@ -150,7 +152,8 @@ jsonParsedObj := gabs.ParseJson([]byte(`{
 jsonOutput := jsonParsedObj.Search("outter").String()
 // Becomes `{"values":{"first":10,"second":11}}`
 
-// If, however, "outter" was not found, or the container was invalid, String() returns "{}"
+// If, however, "outter" was not found, or the container was invalid,
+// String() returns "{}"
 
 ...
 ```
