@@ -50,7 +50,7 @@ if valueOne, ok := jsonParsed.Search("outter", "inner", "value1").Data().(float6
 }
 
 // S() is shorthand for Search()
-valueOne, ok := jsonParsed.S("outter").S("inner").S("value1").Data().(float64); ok {
+valueOne, _ := jsonParsed.S("outter").S("inner").S("value1").Data().(float64)
 
 if err := jsonParsed.Set(10, "outter", "inner", "value2"); err == nil {
 	// outter.inner.value2 was found and has been set to 10.
