@@ -57,6 +57,13 @@ func (g *Container) Search(hierarchy ...string) *Container {
 }
 
 /*
+S - Shorthand method, does the same thing as Search.
+*/
+func (g *Container) S(hierarchy ...string) *Container {
+	return g.Search(hierarchy...)
+}
+
+/*
 Data - Return the contained data as an interface{}.
 */
 func (g *Container) Data() interface{} {

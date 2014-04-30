@@ -1,4 +1,4 @@
-![#Gabs](http://www.creepybit.co.uk/images/gabs_logo.png "Gabs")
+![Gabs](http://www.creepybit.co.uk/images/gabs_logo.png "Gabs")
 
 Gabs is a small utility for dealing with dynamic or unknown JSON structures in golang. It's pretty much just a helpful wrapper around the golang json.Marshal/json.Unmarshal behaviour and map[string]interface{} objects. It does nothing spectacular except for being fabulous.
 
@@ -49,6 +49,9 @@ if valueOne, ok := jsonParsed.Search("outter", "inner", "value1").Data().(float6
 	// was of a different type.
 }
 
+// S() is shorthand for Search()
+valueOne, ok := jsonParsed.S("outter").S("inner").S("value1").Data().(float64); ok {
+
 if err := jsonParsed.Set(10, "outter", "inner", "value2"); err == nil {
 	// outter.inner.value2 was found and has been set to 10.
 } else {
@@ -90,6 +93,10 @@ json2, _ := gabs.ParseJson([]byte(`{
 if english_places := json2.Search("places").Data(); english_places != nil {
 	json1.Set(english_places, "languages", "english", "places")
 }
+
+// NOTE: The internal structure of json1 now contains a pointer to the structure
+// within json2, so editing json2 will also effect json1. This behaviour also means
+// that the structure can contain circular references if you aren't careful.
 
 /* If all went well then the structure of json1 should now be:
 	"languages":{
