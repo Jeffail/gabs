@@ -1,4 +1,4 @@
-![Gabs](http://www.creepybit.co.uk/images/gabs_logo.png "Gabs")
+![Gabs](http://www.creepybit.co.uk/images/gabs_logo.png?v=2 "Gabs")
 
 Gabs is a small utility for dealing with dynamic or unknown JSON structures in golang. It's pretty much just a helpful wrapper around the golang json.Marshal/json.Unmarshal behaviour and map[string]interface{} objects. It does nothing spectacular except for being fabulous.
 
