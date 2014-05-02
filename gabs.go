@@ -75,15 +75,82 @@ Set - Set the value for an object within the JSON structure by specifying the ne
 hierarchy of field names to locate the target.
 */
 func (g *Container) Set(value interface{}, hierarchy ...string) error {
-	parent := g.Search(hierarchy[:len(hierarchy)-1]...).Data()
+	nParents := len(hierarchy)
+	if nParents <= 0 {
+		return errors.New("must specify at least one target parent")
+	}
+
+	parent := g.Search(hierarchy[:nParents-1]...).Data()
 
 	if mmap, ok := parent.(map[string]interface{}); ok {
-		mmap[hierarchy[len(hierarchy)-1]] = value
+		mmap[hierarchy[nParents-1]] = value
 	} else {
 		return errors.New("target object was not found in structure")
 	}
 
 	return nil
+}
+
+/*
+Push - Push a value onto a JSON array.
+*/
+func (g *Container) Push(value interface{}, hierarchy ...string) error {
+	nParents := len(hierarchy)
+	if nParents <= 0 {
+		return errors.New("must specify at least one target parent")
+	}
+
+	parent := g.Search(hierarchy[:nParents-1]...).Data()
+
+	if mmap, ok := parent.(map[string]interface{}); ok {
+		target := mmap[hierarchy[nParents-1]]
+		if array, ok := target.([]interface{}); ok {
+			mmap[hierarchy[nParents-1]] = append(array, value)
+		} else {
+			return errors.New("target object was not an array")
+		}
+	} else {
+		return errors.New("target object was not found in structure")
+	}
+
+	return nil
+}
+
+/*
+CreateObject - Create a new JSON object. Returns a container of the new object.
+*/
+func (g *Container) CreateObject(name string) *Container {
+	if mmap, ok := g.Data().(map[string]interface{}); ok {
+		mmap[name] = map[string]interface{}{}
+		return &Container{mmap[name]}
+	}
+
+	return &Container{nil}
+}
+
+/*
+C - Shorthand method for CreateObject.
+*/
+func (g *Container) C(name string) *Container {
+	return g.CreateObject(name)
+}
+
+/*
+CreateArray - Create a new JSON array.
+*/
+func (g *Container) CreateArray(name string) error {
+	if mmap, ok := g.Data().(map[string]interface{}); ok {
+		mmap[name] = []interface{}{}
+		return nil
+	}
+	return errors.New("container was not a valid object")
+}
+
+/*
+A - Shorthand method for CreateArray.
+*/
+func (g *Container) A(name string) error {
+	return g.CreateArray(name)
 }
 
 /*

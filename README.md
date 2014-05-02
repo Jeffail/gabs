@@ -61,6 +61,37 @@ if err := jsonParsed.Set(10, "outter", "inner", "value2"); err == nil {
 ...
 ```
 
+Gabs tries to make building a JSON structure dynamically as easy as parsing it.
+
+```go
+...
+
+json, _ := gabs.ParseJson([]byte(`{}`))
+
+// CreateObject creates a new JSON object, and also returns it as a gabs container.
+// C("") is shorthand for CreateObject("")
+inner := json.CreateObject("test").C("inner")
+
+// Setting standard fields is safe even when the field doesn't yet exist.
+inner.Set(10, "first")
+inner.Set(20, "second")
+
+// CreateArray creates a new JSON array.
+// A("") is shorthand for CreateArray("").
+inner.CreateArray("array")
+
+// Push pushes new values onto an existing JSON array.
+inner.Push("one", "array")
+inner.Push(2, "array")
+inner.Push("three", "array")
+
+fmt.Println(json.String())
+// This should display:
+// `{"test":{"inner":{"array":["one",2,"three"],"first":10,"second":20}}}`
+
+...
+```
+
 Doing things like merging different JSON structures is also fairly simple.
 
 ```go

@@ -1,6 +1,7 @@
 package gabs
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -183,5 +184,127 @@ func TestShorthand(t *testing.T) {
 	out = json.String()
 	if out != compare2 {
 		t.Errorf("wrong serialized structure: %v\n", out)
+	}
+}
+
+func TestCreation(t *testing.T) {
+	json, _ := ParseJson([]byte(`{}`))
+	inner := json.C("test").C("inner")
+
+	inner.Set(10, "first")
+	inner.Set(20, "second")
+
+	inner.A("array")
+	inner.Push("first element of the array", "array")
+	inner.Push(2, "array")
+	inner.Push("three", "array")
+
+	expected := `{"test":{"inner":{"array":["first element of the array",2,"three"],"first":10,"second":20}}}`
+	actual := json.String()
+	if actual != expected {
+		t.Errorf("received incorrect output from json object: %v\n", actual)
+	}
+}
+
+type outterJson struct {
+	FirstInner  innerJson
+	SecondInner innerJson
+	ThirdInner  innerJson
+}
+
+type innerJson struct {
+	NumberType float64
+	StringType string
+}
+
+type jsonStructure struct {
+	FirstOutter  outterJson
+	SecondOutter outterJson
+}
+
+var jsonContent = []byte(`{
+	"firstOutter":{
+		"firstInner":{
+			"numberType":11,
+			"stringType":"hello world, first first"
+		},
+		"secondInner":{
+			"numberType":12,
+			"stringType":"hello world, first second"
+		},
+		"thirdInner":{
+			"numberType":13,
+			"stringType":"hello world, first third"
+		}
+	},
+	"secondOutter":{
+		"firstInner":{
+			"numberType":21,
+			"stringType":"hello world, second first"
+		},
+		"secondInner":{
+			"numberType":22,
+			"stringType":"hello world, second second"
+		},
+		"thirdInner":{
+			"numberType":23,
+			"stringType":"hello world, second third"
+		}
+	}
+}`)
+
+/*
+Simple use case, compares unmarshalling declared structs vs dynamically searching for
+the equivalent hierarchy. Hopefully we won't see too great a performance drop from the
+dynamic approach.
+*/
+
+func BenchmarkStatic(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		var jsonObj jsonStructure
+		json.Unmarshal(jsonContent, &jsonObj)
+
+		if val := jsonObj.FirstOutter.SecondInner.NumberType; val != 12 {
+			b.Errorf("Wrong value of FirstOutter.SecondInner.NumberType: %v\n", val)
+		}
+		expected := "hello world, first second"
+		if val := jsonObj.FirstOutter.SecondInner.StringType; val != expected {
+			b.Errorf("Wrong value of FirstOutter.SecondInner.StringType: %v\n", val)
+		}
+		if val := jsonObj.SecondOutter.ThirdInner.NumberType; val != 23 {
+			b.Errorf("Wrong value of SecondOutter.ThirdInner.NumberType: %v\n", val)
+		}
+		expected = "hello world, second second"
+		if val := jsonObj.SecondOutter.SecondInner.StringType; val != expected {
+			b.Errorf("Wrong value of SecondOutter.SecondInner.StringType: %v\n", val)
+		}
+	}
+}
+
+func BenchmarkDynamic(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		jsonObj, err := ParseJson(jsonContent)
+		if err != nil {
+			b.Errorf("Error parsing json: %v\n", err)
+		}
+
+		FOSI := jsonObj.S("firstOutter", "secondInner")
+		SOSI := jsonObj.S("secondOutter", "secondInner")
+		SOTI := jsonObj.S("secondOutter", "thirdInner")
+
+		if val := FOSI.S("numberType").Data().(float64); val != 12 {
+			b.Errorf("Wrong value of FirstOutter.SecondInner.NumberType: %v\n", val)
+		}
+		expected := "hello world, first second"
+		if val := FOSI.S("stringType").Data().(string); val != expected {
+			b.Errorf("Wrong value of FirstOutter.SecondInner.StringType: %v\n", val)
+		}
+		if val := SOTI.S("numberType").Data().(float64); val != 23 {
+			b.Errorf("Wrong value of SecondOutter.ThirdInner.NumberType: %v\n", val)
+		}
+		expected = "hello world, second second"
+		if val := SOSI.S("stringType").Data().(string); val != expected {
+			b.Errorf("Wrong value of SecondOutter.SecondInner.StringType: %v\n", val)
+		}
 	}
 }
