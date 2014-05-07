@@ -58,9 +58,9 @@ if err := jsonParsed.Set(10, "outter", "inner", "value2"); err == nil {
 ...
 ```
 
-All search and path queries return a container of the underlying JSON object. If the object doesn't exist you still received a valid container with an underlying value of nil. Calling Data() returns this underlying value, which you can then attempt to cast in order to validate the value was found and is the expected type.
+All search and path queries return a container of the underlying JSON object. If the object doesn't exist you will still receive a valid container with an underlying value of nil. Calling Data() returns this underlying value, which you can then attempt to cast in order to validate the value was found and is the expected type.
 
-You can set the value of a child of an object with Set, this takes the value followed by the name of the child, this part accepts multiple names for specifying a path. If the child doesn't already exist it is created, the hierachy of the path you specified, however, will not be created, and if it does not exist you are returned an error.
+You can set the value of a child of an object with Set, this takes the value followed by the name of the child, this part accepts multiple names for specifying a path. If the child doesn't already exist it is created, the hierarchy of the path you specified, however, will not be created, and if it does not exist you are returned an error.
 
 Gabs tries to make building a JSON structure dynamically as easy as parsing it.
 
@@ -129,7 +129,7 @@ if englishPlaces := json2.Search("places").Data(); englishPlaces != nil {
 
 // Could also be written as
 
-if englishPlaces := json2.Path("places").Data(); englishPlaces != nil {
+if englishPlaces = json2.Path("places").Data(); englishPlaces != nil {
 	json1.Path("languages.english").Set(englishPlaces, "places")
 }
 
