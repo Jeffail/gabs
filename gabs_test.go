@@ -8,7 +8,7 @@ import (
 func TestBasic(t *testing.T) {
 	sample := []byte(`{"test":{"value":10},"test2":20}`)
 
-	val, err := ParseJson(sample)
+	val, err := ParseJSON(sample)
 	if err != nil {
 		t.Errorf("Failed to parse: %v", err)
 		return
@@ -35,10 +35,24 @@ func TestBasic(t *testing.T) {
 	}
 }
 
+func TestDotNotation(t *testing.T) {
+	sample := []byte(`{"test":{"inner":{"value":10}},"test2":20}`)
+
+	val, err := ParseJSON(sample)
+	if err != nil {
+		t.Errorf("Failed to parse: %v", err)
+		return
+	}
+
+	if result, _ := val.Path("test.inner.value").Data().(float64); result != 10 {
+		t.Errorf("Expected 10, received: %v", result)
+	}
+}
+
 func TestModify(t *testing.T) {
 	sample := []byte(`{"test":{"value":10},"test2":20}`)
 
-	val, err := ParseJson(sample)
+	val, err := ParseJSON(sample)
 	if err != nil {
 		t.Errorf("Failed to parse: %v", err)
 		return
@@ -66,7 +80,7 @@ func TestModify(t *testing.T) {
 }
 
 func TestArrays(t *testing.T) {
-	json1, _ := ParseJson([]byte(`{
+	json1, _ := ParseJSON([]byte(`{
 		"languages":{
 			"english":{
 				"places":0
@@ -80,7 +94,7 @@ func TestArrays(t *testing.T) {
 		}
 	}`))
 
-	json2, _ := ParseJson([]byte(`{
+	json2, _ := ParseJSON([]byte(`{
 		"places":[
 			"great_britain",
 			"united_states_of_america",
@@ -88,21 +102,21 @@ func TestArrays(t *testing.T) {
 		]
 	}`))
 
-	if english_places := json2.Search("places").Data(); english_places != nil {
-		json1.Set(english_places, "languages", "english", "places")
+	if englishPlaces := json2.Search("places").Data(); englishPlaces != nil {
+		json1.Set(englishPlaces, "languages", "english", "places")
 	} else {
 		t.Errorf("Didn't find places in json2")
 	}
 
-	if english_places := json1.Search("languages", "english", "places").Data(); english_places != nil {
+	if englishPlaces := json1.Search("languages", "english", "places").Data(); englishPlaces != nil {
 
-		english_array, ok := english_places.([]interface{})
+		englishArray, ok := englishPlaces.([]interface{})
 		if !ok {
-			t.Errorf("places in json1 (%v) was not an array", english_places)
+			t.Errorf("places in json1 (%v) was not an array", englishPlaces)
 		}
 
-		if len(english_array) != 3 {
-			t.Errorf("wrong length of array: %v", len(english_array))
+		if len(englishArray) != 3 {
+			t.Errorf("wrong length of array: %v", len(englishArray))
 		}
 
 	} else {
@@ -124,7 +138,7 @@ func TestLargeSample(t *testing.T) {
 		"test2":20
 	}`)
 
-	val, err := ParseJson(sample)
+	val, err := ParseJSON(sample)
 	if err != nil {
 		t.Errorf("Failed to parse: %v", err)
 		return
@@ -140,7 +154,7 @@ func TestLargeSample(t *testing.T) {
 }
 
 func TestShorthand(t *testing.T) {
-	json, _ := ParseJson([]byte(`{
+	json, _ := ParseJSON([]byte(`{
 		"outter":{
 			"inner":{
 				"value":5,
@@ -187,14 +201,26 @@ func TestShorthand(t *testing.T) {
 	}
 }
 
+func TestInvalid(t *testing.T) {
+	validObj, err := ParseJSON([]byte(`{}`))
+	if err != nil {
+		t.Errorf("failed to parse '{}'")
+	}
+
+	invalidStr := validObj.S("Doesn't exist").String()
+	if "{}" != invalidStr {
+		t.Errorf("expected '{}', received: %v", invalidStr)
+	}
+}
+
 func TestCreation(t *testing.T) {
-	json, _ := ParseJson([]byte(`{}`))
-	inner := json.C("test").C("inner")
+	json, _ := ParseJSON([]byte(`{}`))
+	inner := json.CO("test").CO("inner")
 
 	inner.Set(10, "first")
 	inner.Set(20, "second")
 
-	inner.A("array")
+	inner.CA("array")
 	inner.Push("first element of the array", "array")
 	inner.Push(2, "array")
 	inner.Push("three", "array")
@@ -206,20 +232,20 @@ func TestCreation(t *testing.T) {
 	}
 }
 
-type outterJson struct {
-	FirstInner  innerJson
-	SecondInner innerJson
-	ThirdInner  innerJson
+type outterJSON struct {
+	FirstInner  innerJSON
+	SecondInner innerJSON
+	ThirdInner  innerJSON
 }
 
-type innerJson struct {
+type innerJSON struct {
 	NumberType float64
 	StringType string
 }
 
 type jsonStructure struct {
-	FirstOutter  outterJson
-	SecondOutter outterJson
+	FirstOutter  outterJSON
+	SecondOutter outterJSON
 }
 
 var jsonContent = []byte(`{
@@ -283,7 +309,7 @@ func BenchmarkStatic(b *testing.B) {
 
 func BenchmarkDynamic(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		jsonObj, err := ParseJson(jsonContent)
+		jsonObj, err := ParseJSON(jsonContent)
 		if err != nil {
 			b.Errorf("Error parsing json: %v\n", err)
 		}

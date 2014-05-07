@@ -27,6 +27,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"strings"
 )
 
 /*
@@ -35,6 +36,13 @@ json. Use this container to move context.
 */
 type Container struct {
 	object interface{}
+}
+
+/*
+Path - Search for a value using dot notation.
+*/
+func (g *Container) Path(path string) *Container {
+	return g.Search(strings.Split(path, ".")...)
 }
 
 /*
@@ -129,9 +137,9 @@ func (g *Container) CreateObject(name string) *Container {
 }
 
 /*
-C - Shorthand method for CreateObject.
+CO - Shorthand method for CreateObject.
 */
-func (g *Container) C(name string) *Container {
+func (g *Container) CO(name string) *Container {
 	return g.CreateObject(name)
 }
 
@@ -147,9 +155,9 @@ func (g *Container) CreateArray(name string) error {
 }
 
 /*
-A - Shorthand method for CreateArray.
+CA - Shorthand method for CreateArray.
 */
-func (g *Container) A(name string) error {
+func (g *Container) CA(name string) error {
 	return g.CreateArray(name)
 }
 
@@ -157,16 +165,29 @@ func (g *Container) A(name string) error {
 String - Converts the contained object back to a JSON formatted string.
 */
 func (g *Container) String() string {
-	if bytes, err := json.Marshal(g.object); err == nil {
-		return string(bytes)
+	if g.object != nil {
+		if bytes, err := json.Marshal(g.object); err == nil {
+			return string(bytes)
+		}
 	}
+
 	return "{}"
 }
 
 /*
-ParseJson - Convert a string into a representation of the parsed JSON.
+Consume - Gobble up an already converted JSON object.
 */
-func ParseJson(sample []byte) (*Container, error) {
+func Consume(root interface{}) (*Container, error) {
+	if _, ok := root.(map[string]interface{}); ok {
+		return &Container{root}, nil
+	}
+	return nil, errors.New("root was not a valid JSON object")
+}
+
+/*
+ParseJSON - Convert a string into a representation of the parsed JSON.
+*/
+func ParseJSON(sample []byte) (*Container, error) {
 	var gabs Container
 
 	if err := json.Unmarshal(sample, &gabs.object); err != nil {
@@ -177,23 +198,23 @@ func ParseJson(sample []byte) (*Container, error) {
 		return &gabs, nil
 	}
 
-	return nil, errors.New("json appears to contain no data.")
+	return nil, errors.New("json appears to contain no data")
 }
 
 /*
-ParseJsonFile - Read a file and convert into a representation of the parsed JSON.
+ParseJSONFile - Read a file and convert into a representation of the parsed JSON.
 */
-func ParseJsonFile(path string) (*Container, error) {
+func ParseJSONFile(path string) (*Container, error) {
 	if len(path) > 0 {
-		if cBytes, err := ioutil.ReadFile(path); err == nil {
-			if container, err := ParseJson(cBytes); err == nil {
+		cBytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			container, err := ParseJSON(cBytes)
+			if err != nil {
 				return container, nil
-			} else {
-				return nil, err
 			}
-		} else {
 			return nil, err
 		}
+		return nil, err
 	}
 	return nil, errors.New("file path was invalid")
 }
