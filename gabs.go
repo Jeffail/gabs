@@ -146,7 +146,7 @@ func (g *Container) Push(target string, value interface{}) error {
 }
 
 /*
-Remove - Remove a value from a JSON array.
+RemoveElement - Remove a value from a JSON array.
 */
 func (g *Container) RemoveElement(target string, index int) error {
 	if index < 0 {
