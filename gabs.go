@@ -119,6 +119,14 @@ func (g *Container) Set(target string, value interface{}) error {
 	return nil
 }
 
+/*-----------------------------------------------------------------------------------------------------------------
+ */
+
+/*
+Array modification/search - Keeping these options simple right now, no need for anything more complicated
+since you can just cast to []interface{}, modify and then reassign with Set.
+*/
+
 /*
 Push - Push a value onto a JSON array.
 */
@@ -136,6 +144,58 @@ func (g *Container) Push(target string, value interface{}) error {
 
 	return nil
 }
+
+/*
+Remove - Remove a value from a JSON array.
+*/
+func (g *Container) RemoveElement(target string, index int) error {
+	if index < 0 {
+		return errors.New("target index out of bounds")
+	}
+
+	if mmap, ok := g.Data().(map[string]interface{}); ok {
+
+		arrayTarget := mmap[target]
+		if array, ok := arrayTarget.([]interface{}); ok {
+
+			if index < len(array) {
+				mmap[target] = append(array[:index], array[index+1:]...)
+			} else {
+				return errors.New("target index was out of bounds of array")
+			}
+		} else {
+			return errors.New("target object was not an array")
+		}
+	} else {
+		return errors.New("parent was not a valid JSON object")
+	}
+	return nil
+}
+
+/*
+GetElement - Get the desired element from a JSON array
+*/
+func (g *Container) GetElement(target string, index int) *Container {
+	if index < 0 {
+		return &Container{nil}
+	}
+
+	if mmap, ok := g.Data().(map[string]interface{}); ok {
+
+		arrayTarget := mmap[target]
+		if array, ok := arrayTarget.([]interface{}); ok {
+
+			if index < len(array) {
+				return &Container{array[index]}
+			}
+		}
+	}
+
+	return &Container{nil}
+}
+
+/*-----------------------------------------------------------------------------------------------------------------
+ */
 
 /*
 CreateObject - Create a new JSON object. Returns a container of the new object.

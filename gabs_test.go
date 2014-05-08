@@ -2,6 +2,7 @@ package gabs
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 )
 
@@ -184,6 +185,46 @@ func TestArrays(t *testing.T) {
 
 	} else {
 		t.Errorf("Didn't find places in json1")
+	}
+
+	for i := 0; i < 3; i++ {
+		if err := json2.RemoveElement("places", 0); err != nil {
+			t.Errorf("Error removing element: %v", err)
+		}
+	}
+
+	json2.Push("places", map[string]interface{}{})
+	json2.Push("places", map[string]interface{}{})
+	json2.Push("places", map[string]interface{}{})
+
+	// Using float64 for this test even though it's completely inappropriate because
+	// later on the API might do something clever with types, in which case all numbers
+	// will become float64.
+	for i := 0; i < 3; i++ {
+		json2.GetElement("places", i).CreateObject(fmt.Sprintf("object%v", i)).Set("index", float64(i))
+	}
+
+	children, _ := json2.S("places").Children()
+	for i, obj := range children {
+
+		if id, ok := obj.S(fmt.Sprintf("object%v", i)).S("index").Data().(float64); ok {
+			if id != float64(i) {
+				t.Errorf("Wrong index somehow, expected %v, received %v", i, id)
+			}
+		} else {
+			t.Errorf("Failed to find element %v from %v", i, obj)
+		}
+	}
+
+	if err := json2.RemoveElement("places", 1); err != nil {
+		t.Errorf("Error removing element: %v", err)
+	}
+
+	expected := `{"places":[{"object0":{"index":0}},{"object2":{"index":2}}]}`
+	received := json2.String()
+
+	if expected != received {
+		t.Errorf("Wrong output, expected: %v, received: %v", expected, received)
 	}
 }
 

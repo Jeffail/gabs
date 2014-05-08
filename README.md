@@ -49,7 +49,7 @@ valueOne, found = jsonParsed.Search("outter", "inner", "value1").Data().(float64
 // S() is shorthand for Search()
 valueOne, found = jsonParsed.S("outter").S("inner").S("value1").Data().(float64)
 
-if err := jsonParsed.Path("outter.inner").Set("value2", 10); err == nil {
+if err := jsonParsed.Path("outter.inner").Set("value2", 10f); err == nil {
 	// outter.inner.value2 has been set to 10.
 } else {
 	// outter.inner was not found in the JSON structure.
@@ -62,12 +62,24 @@ for _, obj := range jsonParsed.S("outter").Children() {
 	jsonParsed2.Push("array", obj.Data())
 }
 
+// And there are helper functions for modifying and receiving array values
+
+if err := jsonParsed2.RemoveElement("array", 1); err != nil {
+	// Index was out of bounds or the array doesn't exist
+}
+
+value, _ := jsonParsed2.GetElement("array", 0).Path("value1").Data().(float64)
+// value will either be 10 or 20, we don't know because object children
+// aren't iterated in order
+
 ...
 ```
 
 All search and path queries return a container of the underlying JSON object. If the object doesn't exist you will still receive a valid container with an underlying value of nil. Calling Data() returns this underlying value, which you can then attempt to cast in order to validate the value was found and is the expected type.
 
 You can set the value of a child of an object with Set. If the child doesn't already exist it is created, and an error is returned if the containing object either doesn't exist or isn't of the type map[string]interface{} (a JSON object).
+
+NOTE: The Set method accepts interface{}, so this can potentially be any type and will be serialized following the same rules as json.Marshal. Gabs currently doesn't do anything clever with these values, so don't expect to Set using integer values and then receive back float64's.
 
 Gabs tries to make building a JSON structure dynamically as easy as parsing it.
 
@@ -80,8 +92,8 @@ json, _ := gabs.ParseJSON([]byte(`{}`))
 // CO("") is shorthand for CreateObject("")
 inner := json.CreateObject("test").CO("inner")
 
-inner.Set("first", 10)
-inner.Set("second", 20)
+inner.Set("first", 10f)
+inner.Set("second", 20f)
 
 // CreateArray creates a new JSON array.
 // CA("") is shorthand for CreateArray("").
