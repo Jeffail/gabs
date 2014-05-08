@@ -35,8 +35,8 @@ if err != nil {
 	// You done goofed
 }
 
-valueOne, found := jsonParsed.Path("outter.inner.value1").Data().(float64)
-if found {
+value, ok := jsonParsed.Path("outter.inner.value1").Data().(float64)
+if ok {
 	// outter.inner.value1 was found and its value is now stored in valueOne.
 } else {
 	// outter.inner.value1 was either non-existant in the JSON structure or
@@ -44,22 +44,19 @@ if found {
 }
 
 // Alternatively, break the search down into individual strings
-valueOne, found = jsonParsed.Search("outter", "inner", "value1").Data().(float64)
+value, ok = jsonParsed.Search("outter", "inner", "value1").Data().(float64)
 
 // S() is shorthand for Search()
-valueOne, found = jsonParsed.S("outter").S("inner").S("value1").Data().(float64)
+value, ok = jsonParsed.S("outter", "inner", "value1").Data().(float64)
 
 if err := jsonParsed.Path("outter.inner").Set("value2", 10f); err == nil {
 	// outter.inner.value2 has been set to 10.
-} else {
-	// outter.inner was not found in the JSON structure.
 }
 
-// You can also iterate the children of a JSON array or object
 jsonParsed2, _ := gabs.ParseJSON([]byte(`{"array":[]"}`))
 
-for _, obj := range jsonParsed.S("outter").Children() {
-	jsonParsed2.Push("array", obj.Data())
+for _, object := range jsonParsed.S("outter").Children() {
+	// Do something with object
 }
 
 // And there are helper functions for modifying and receiving array values
@@ -68,7 +65,7 @@ if err := jsonParsed2.RemoveElement("array", 1); err != nil {
 	// Index was out of bounds or the array doesn't exist
 }
 
-value, _ := jsonParsed2.GetElement("array", 0).Path("value1").Data().(float64)
+value, ok = jsonParsed2.GetElement("array", 0).Path("value1").Data().(float64)
 // value will either be 10 or 20, we don't know because object children
 // aren't iterated in order
 
