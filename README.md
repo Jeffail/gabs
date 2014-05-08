@@ -49,10 +49,17 @@ valueOne, found = jsonParsed.Search("outter", "inner", "value1").Data().(float64
 // S() is shorthand for Search()
 valueOne, found = jsonParsed.S("outter").S("inner").S("value1").Data().(float64)
 
-if err := jsonParsed.Set(10, "outter", "inner", "value2"); err == nil {
+if err := jsonParsed.Path("outter.inner").Set("value2", 10); err == nil {
 	// outter.inner.value2 has been set to 10.
 } else {
 	// outter.inner was not found in the JSON structure.
+}
+
+// You can also iterate the children of a JSON array or object
+jsonParsed2, _ := gabs.ParseJSON([]byte(`{"array":[]"}`))
+
+for _, obj := range jsonParsed.S("outter").Children() {
+	jsonParsed2.Push("array", obj.Data())
 }
 
 ...
@@ -60,7 +67,7 @@ if err := jsonParsed.Set(10, "outter", "inner", "value2"); err == nil {
 
 All search and path queries return a container of the underlying JSON object. If the object doesn't exist you will still receive a valid container with an underlying value of nil. Calling Data() returns this underlying value, which you can then attempt to cast in order to validate the value was found and is the expected type.
 
-You can set the value of a child of an object with Set, this takes the value followed by the name of the child, this part accepts multiple names for specifying a path. If the child doesn't already exist it is created, the hierarchy of the path you specified, however, will not be created, and if it does not exist you are returned an error.
+You can set the value of a child of an object with Set. If the child doesn't already exist it is created, and an error is returned if the containing object either doesn't exist or isn't of the type map[string]interface{} (a JSON object).
 
 Gabs tries to make building a JSON structure dynamically as easy as parsing it.
 
@@ -73,17 +80,17 @@ json, _ := gabs.ParseJSON([]byte(`{}`))
 // CO("") is shorthand for CreateObject("")
 inner := json.CreateObject("test").CO("inner")
 
-inner.Set(10, "first")
-inner.Set(20, "second")
+inner.Set("first", 10)
+inner.Set("second", 20)
 
 // CreateArray creates a new JSON array.
 // CA("") is shorthand for CreateArray("").
 inner.CreateArray("array")
 
 // Push pushes new values onto an existing JSON array.
-inner.Push("one", "array")
-inner.Push(2, "array")
-inner.Push("three", "array")
+inner.Push("array", "one")
+inner.Push("array", 2)
+inner.Push("array", "three")
 
 fmt.Println(json.String())
 // This should display:
@@ -124,13 +131,13 @@ json2, _ := gabs.ParseJSON([]byte(`{
 // The following
 
 if englishPlaces := json2.Search("places").Data(); englishPlaces != nil {
-	json1.Set(englishPlaces, "languages", "english", "places")
+	json1.Path("languages.english").Set("places", englishPlaces)
 }
 
 // Could also be written as
 
 if englishPlaces = json2.Path("places").Data(); englishPlaces != nil {
-	json1.Path("languages.english").Set(englishPlaces, "places")
+	json1.S("languages", "english").Set("places", englishPlaces)
 }
 
 // NOTE: The internal structure of json1 now contains a pointer to the structure

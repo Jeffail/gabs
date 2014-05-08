@@ -58,7 +58,7 @@ func TestModify(t *testing.T) {
 		return
 	}
 
-	if err := val.Set(45.0, "test", "value"); err != nil {
+	if err := val.S("test").Set("value", 45.0); err != nil {
 		t.Errorf("Failed to set field")
 	}
 
@@ -76,6 +76,69 @@ func TestModify(t *testing.T) {
 
 	if out := val.Search("test").String(); `{"value":45}` != out {
 		t.Errorf("Incorrectly serialized: %v", out)
+	}
+}
+
+func TestChildren(t *testing.T) {
+	json1, _ := ParseJSON([]byte(`{
+		"objectOne":{
+		},
+		"objectTwo":{
+		},
+		"objectThree":{
+		}
+	}`))
+
+	objects, _ := json1.Children()
+	for _, object := range objects {
+		object.Set("child", "hello world")
+	}
+
+	expected := `{"objectOne":{"child":"hello world"},"objectThree":{"child":"hello world"}` +
+		`,"objectTwo":{"child":"hello world"}}`
+	received := json1.String()
+	if expected != received {
+		t.Errorf("json1: expected %v, received %v", expected, received)
+	}
+
+	json2, _ := ParseJSON([]byte(`{
+		"values":[
+			{
+				"objectOne":{
+				}
+			},
+			{
+				"objectTwo":{
+				}
+			},
+			{
+				"objectThree":{
+				}
+			}
+		]
+	}`))
+
+	json3, _ := ParseJSON([]byte(`{
+		"values":[
+		]
+	}`))
+
+	objects, _ = json2.S("values").Children()
+	for _, object := range objects {
+		object.Set("child", "hello world")
+		json3.Push("values", object.Data())
+	}
+
+	expected = `{"values":[{"child":"hello world","objectOne":{}},{"child":"hello world",` +
+		`"objectTwo":{}},{"child":"hello world","objectThree":{}}]}`
+	received = json2.String()
+	if expected != received {
+		t.Errorf("json2: expected %v, received %v", expected, received)
+	}
+
+	received = json3.String()
+	if expected != received {
+		t.Errorf("json3: expected %v, received %v", expected, received)
 	}
 }
 
@@ -103,7 +166,7 @@ func TestArrays(t *testing.T) {
 	}`))
 
 	if englishPlaces := json2.Search("places").Data(); englishPlaces != nil {
-		json1.Set(englishPlaces, "languages", "english", "places")
+		json1.Path("languages.english").Set("places", englishPlaces)
 	} else {
 		t.Errorf("Didn't find places in json2")
 	}
@@ -179,7 +242,7 @@ func TestShorthand(t *testing.T) {
 		t.Errorf("real value was incorrect: %v\n", realValue)
 	}
 
-	err := json.S("outter2").Set(json.S("outter").S("inner").Data(), "inner")
+	err := json.S("outter2").Set("inner", json.S("outter").S("inner").Data())
 	if err != nil {
 		t.Errorf("error setting outter2: %v\n", err)
 	}
@@ -194,7 +257,7 @@ func TestShorthand(t *testing.T) {
 	compare2 := `{"outter":{"inner":{"value":6,"value2":10,"value3":11},"inner2":{}}` +
 		`,"outter2":{"inner":{"value":6,"value2":10,"value3":11}}}`
 
-	json.S("outter").S("inner").Set(6, "value")
+	json.S("outter").S("inner").Set("value", 6)
 	out = json.String()
 	if out != compare2 {
 		t.Errorf("wrong serialized structure: %v\n", out)
@@ -217,15 +280,16 @@ func TestCreation(t *testing.T) {
 	json, _ := ParseJSON([]byte(`{}`))
 	inner := json.CO("test").CO("inner")
 
-	inner.Set(10, "first")
-	inner.Set(20, "second")
+	inner.Set("first", 10)
+	inner.Set("second", 20)
 
 	inner.CA("array")
-	inner.Push("first element of the array", "array")
-	inner.Push(2, "array")
-	inner.Push("three", "array")
+	inner.Push("array", "first element of the array")
+	inner.Push("array", 2)
+	inner.Push("array", "three")
 
-	expected := `{"test":{"inner":{"array":["first element of the array",2,"three"],"first":10,"second":20}}}`
+	expected := `{"test":{"inner":{"array":["first element of the array",2,"three"],` +
+		`"first":10,"second":20}}}`
 	actual := json.String()
 	if actual != expected {
 		t.Errorf("received incorrect output from json object: %v\n", actual)

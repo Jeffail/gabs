@@ -79,21 +79,41 @@ func (g *Container) Data() interface{} {
 }
 
 /*
-Set - Set the value for an object within the JSON structure by specifying the new value and the
-hierarchy of field names to locate the target.
+Children - Return a slice of all the children of the array. This also works for objects,
+however, the children returned for an object will NOT be in order and you lose the names
+of the returned objects this way.
 */
-func (g *Container) Set(value interface{}, hierarchy ...string) error {
-	nParents := len(hierarchy)
-	if nParents <= 0 {
-		return errors.New("must specify at least one target parent")
+func (g *Container) Children() ([]*Container, error) {
+	if array, ok := g.Data().([]interface{}); ok {
+
+		children := make([]*Container, len(array))
+		for i := 0; i < len(array); i++ {
+			children[i] = &Container{array[i]}
+		}
+
+		return children, nil
+
+	} else if mmap, ok := g.Data().(map[string]interface{}); ok {
+
+		children := []*Container{}
+		for _, obj := range mmap {
+			children = append(children, &Container{obj})
+		}
+
+		return children, nil
 	}
 
-	parent := g.Search(hierarchy[:nParents-1]...).Data()
+	return nil, errors.New("parent was not a valid JSON object or array")
+}
 
-	if mmap, ok := parent.(map[string]interface{}); ok {
-		mmap[hierarchy[nParents-1]] = value
+/*
+Set - Set the value for a child of a JSON object. The child doesn't have to already exist.
+*/
+func (g *Container) Set(target string, value interface{}) error {
+	if mmap, ok := g.Data().(map[string]interface{}); ok {
+		mmap[target] = value
 	} else {
-		return errors.New("target object was not found in structure")
+		return errors.New("parent was not a valid JSON object")
 	}
 
 	return nil
@@ -102,23 +122,16 @@ func (g *Container) Set(value interface{}, hierarchy ...string) error {
 /*
 Push - Push a value onto a JSON array.
 */
-func (g *Container) Push(value interface{}, hierarchy ...string) error {
-	nParents := len(hierarchy)
-	if nParents <= 0 {
-		return errors.New("must specify at least one target parent")
-	}
-
-	parent := g.Search(hierarchy[:nParents-1]...).Data()
-
-	if mmap, ok := parent.(map[string]interface{}); ok {
-		target := mmap[hierarchy[nParents-1]]
-		if array, ok := target.([]interface{}); ok {
-			mmap[hierarchy[nParents-1]] = append(array, value)
+func (g *Container) Push(target string, value interface{}) error {
+	if mmap, ok := g.Data().(map[string]interface{}); ok {
+		arrayTarget := mmap[target]
+		if array, ok := arrayTarget.([]interface{}); ok {
+			mmap[target] = append(array, value)
 		} else {
 			return errors.New("target object was not an array")
 		}
 	} else {
-		return errors.New("target object was not found in structure")
+		return errors.New("parent was not a valid JSON object")
 	}
 
 	return nil
