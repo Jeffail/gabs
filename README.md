@@ -35,13 +35,9 @@ if err != nil {
 	// You done goofed
 }
 
+// This is all safe, regardless of whether the path exists or not, you validate that
+// the value is found and correct with the cast.
 value, ok := jsonParsed.Path("outter.inner.value1").Data().(float64)
-if ok {
-	// outter.inner.value1 was found and its value is now stored in valueOne.
-} else {
-	// outter.inner.value1 was either non-existant in the JSON structure or
-	// was of a different type.
-}
 
 // Alternatively, break the search down into individual strings
 value, ok = jsonParsed.Search("outter", "inner", "value1").Data().(float64)
@@ -56,16 +52,15 @@ if err := jsonParsed.Path("outter.inner").Set("value2", 10f); err == nil {
 jsonParsed2, _ := gabs.ParseJSON([]byte(`{"array":[]"}`))
 
 for _, object := range jsonParsed.S("outter").Children() {
-	// Do something with object
+	jsonParsed2.Push("array", object.Data())
 }
 
 // And there are helper functions for modifying and receiving array values
 
-if err := jsonParsed2.RemoveElement("array", 1); err != nil {
-	// Index was out of bounds or the array doesn't exist
-}
+err := jsonParsed2.RemoveElement("array", 1)
 
 value, ok = jsonParsed2.GetElement("array", 0).Path("value1").Data().(float64)
+
 // value will either be 10 or 20, we don't know because object children
 // aren't iterated in order
 
