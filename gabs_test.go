@@ -124,6 +124,15 @@ func TestChildren(t *testing.T) {
 		]
 	}`))
 
+	numChildren1 := json2.CountElements("values")
+	numChildren2 := json3.CountElements("values")
+	numChildren3 := json3.CountElements("valuesNOTREAL")
+
+	if numChildren1 != 3 || numChildren2 != 0 || numChildren3 != -1 {
+		t.Errorf("CountElements, expected 3, 0 and -1, received %v, %v and %v",
+			numChildren1, numChildren2, numChildren3)
+	}
+
 	objects, _ = json2.S("values").Children()
 	for _, object := range objects {
 		object.Set("child", "hello world")

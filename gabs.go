@@ -194,6 +194,20 @@ func (g *Container) GetElement(target string, index int) *Container {
 	return &Container{nil}
 }
 
+/*
+CountElements - Count the elements of a JSON array, returns -1 if the target
+is not an array
+*/
+func (g *Container) CountElements(target string) int {
+	if mmap, ok := g.Data().(map[string]interface{}); ok {
+		arrayTarget := mmap[target]
+		if array, ok := arrayTarget.([]interface{}); ok {
+			return len(array)
+		}
+	}
+	return -1
+}
+
 /*-----------------------------------------------------------------------------------------------------------------
  */
 
