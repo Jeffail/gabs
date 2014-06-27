@@ -46,7 +46,7 @@ value, ok = jsonParsed.Path("does.not.exist").Data().(float64)
 ...
 ```
 
-###Recursing arrays
+###Iterating arrays
 
 ```go
 ...
