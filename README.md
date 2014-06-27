@@ -12,7 +12,7 @@ go get github.com/jeffail/gabs
 
 ##How to use
 
-###Parsing JSON
+###Parsing and searching JSON
 
 ```go
 ...
@@ -31,141 +31,95 @@ jsonParsed, err := gabs.ParseJSON([]byte(`{
 	}
 }`))
 
-if err != nil {
-	// You done goofed
-}
+var value float64
+var ok bool
 
-// This is all safe, regardless of whether the path exists or not, you validate that
-// the value is found and correct with the cast.
-value, ok := jsonParsed.Path("outter.inner.value1").Data().(float64)
+value, ok = jsonParsed.Path("outter.inner.value1").Data().(float64)
+// value == 10.0, ok == true
 
-// Alternatively, break the search down into individual strings
 value, ok = jsonParsed.Search("outter", "inner", "value1").Data().(float64)
+// value == 10.0, ok == true
 
-// S() is shorthand for Search()
-value, ok = jsonParsed.S("outter", "inner", "value1").Data().(float64)
-
-if err := jsonParsed.Path("outter.inner").Set("value2", 10f); err == nil {
-	// outter.inner.value2 has been set to 10.
-}
-
-jsonParsed2, _ := gabs.ParseJSON([]byte(`{"array":[]"}`))
-
-for _, object := range jsonParsed.S("outter").Children() {
-	jsonParsed2.Push("array", object.Data())
-}
-
-// And there are helper functions for modifying and receiving array values
-
-err := jsonParsed2.RemoveElement("array", 1)
-
-value, ok = jsonParsed2.GetElement("array", 0).Path("value1").Data().(float64)
-
-// value will either be 10 or 20, we don't know because object children
-// aren't iterated in order
+value, ok = jsonParsed.Path("does.not.exist").Data().(float64)
+// value == 0.0, ok == false
 
 ...
 ```
 
-All search and path queries return a container of the underlying JSON object. If the object doesn't exist you will still receive a valid container with an underlying value of nil. Calling Data() returns this underlying value, which you can then attempt to cast in order to validate the value was found and is the expected type.
-
-You can set the value of a child of an object with Set. If the child doesn't already exist it is created, and an error is returned if the containing object either doesn't exist or isn't of the type map[string]interface{} (a JSON object).
-
-NOTE: The Set method accepts interface{}, so this can potentially be any type and will be serialized following the same rules as json.Marshal. Gabs currently doesn't do anything clever with these values, so don't expect to Set using integer values and then receive back float64's.
-
-Gabs tries to make building a JSON structure dynamically as easy as parsing it.
+###Recursing arrays
 
 ```go
 ...
 
-json, _ := gabs.ParseJSON([]byte(`{}`))
+jsonParsed, _ := gabs.ParseJSON([]byte(`{"array":[ "first", "second", "third" ]}`))
 
-// CreateObject creates a new JSON object, and also returns it as a gabs container.
-// CO("") is shorthand for CreateObject("")
-inner := json.CreateObject("test").CO("inner")
-
-inner.Set("first", 10f)
-inner.Set("second", 20f)
-
-// CreateArray creates a new JSON array.
-// CA("") is shorthand for CreateArray("").
-inner.CreateArray("array")
-
-// Push pushes new values onto an existing JSON array.
-inner.Push("array", "one")
-inner.Push("array", 2)
-inner.Push("array", "three")
-
-fmt.Println(json.String())
-// This should display:
-// `{"test":{"inner":{"array":["one",2,"three"],"first":10,"second":20}}}`
+// S is shorthand for Search
+children, _ := jsonParsed.S("array").Children()
+for _, child := range children {
+	fmt.Println(child.Data().(string))
+}
 
 ...
 ```
 
-Doing things like merging different JSON structures is also fairly simple.
+Will print:
+
+```
+first
+second
+third
+```
+
+Children() will return all children of an array in order. This also works on objects, however, the children will be returned in a random order.
+
+###Generating JSON
 
 ```go
 ...
 
-import "github.com/jeffail/gabs"
+var err error
 
-json1, _ := gabs.ParseJSON([]byte(`{
-	"languages":{
-		"english":{
-			"places":0
-		},
-		"french": {
-			"places": [
-				"france",
-				"belgium"
-			]
-		}
-	}
-}`))
+jsonObj, _ := gabs.Consume(map[string]interface{}{})
 
-json2, _ := gabs.ParseJSON([]byte(`{
-	"places":[
-		"great_britain",
-		"united_states_of_america",
-		"the_world"
-	]
-}`))
+_, err = jsonObj.Set(10, "outter", "inner", "value")
+_, err = jsonObj.SetP(20, "outter.inner.value2")
+_, err = jsonObj.Set(30, "outter", "inner2", "value3")
 
-// The following
-
-if englishPlaces := json2.Search("places").Data(); englishPlaces != nil {
-	json1.Path("languages.english").Set("places", englishPlaces)
-}
-
-// Could also be written as
-
-if englishPlaces = json2.Path("places").Data(); englishPlaces != nil {
-	json1.S("languages", "english").Set("places", englishPlaces)
-}
-
-// NOTE: The internal structure of json1 now contains a pointer to the structure
-// within json2, so editing json2 will also effect json1. This behaviour also means
-// that the structure can contain circular references if you aren't careful.
-
-/* If all went well then the structure of json1 should now be:
-	"languages":{
-		"english":{
-			"places":[
-				"great_britain",
-				"united_states_of_america",
-				"the_world"
-			]
-		},
-		"french": {
-			"places": [
-				"france",
-				"belgium"
-			]
-		}
-*/
+fmt.Println(jsonObj.String())
 
 ...
+```
+
+Will print:
+
+```
+{"outter":{"inner":{"value":10,"value2":20},"inner2":{"value3":30}}}
+```
+
+###Generating Arrays
+
+```go
+...
+
+var err error
+
+jsonObj, _ := gabs.Consume(map[string]interface{}{})
+
+jsonObj.Array("array")
+
+jsonObj.Push("array", 10)
+jsonObj.Push("array", 20)
+jsonObj.Push("array", 30)
+
+fmt.Println(jsonObj.String())
+
+...
+```
+
+Will print:
+
+```
+{"array":[10,20,30]}
 ```
 
 ###Converting back to JSON
@@ -208,9 +162,6 @@ jsonParsedObj := gabs.ParseJSON([]byte(`{
 
 jsonOutput := jsonParsedObj.Search("outter").String()
 // Becomes `{"values":{"first":10,"second":11}}`
-
-// If, however, "outter" was not found, or the container was invalid,
-// String() returns "{}"
 
 ...
 ```

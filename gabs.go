@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-// Package gabs implements a simplified wrapper around json parsing an unknown structure
+// Package gabs implements a simplified wrapper around creating and parsing JSON.
 package gabs
 
 import (
@@ -29,6 +29,9 @@ import (
 	"io/ioutil"
 	"strings"
 )
+
+/*---------------------------------------------------------------------------------------------------
+ */
 
 /*
 Container - an internal structure that holds a reference to the core interface map of the parsed
@@ -39,6 +42,16 @@ type Container struct {
 }
 
 /*
+Data - Return the contained data as an interface{}.
+*/
+func (g *Container) Data() interface{} {
+	return g.object
+}
+
+/*---------------------------------------------------------------------------------------------------
+ */
+
+/*
 Path - Search for a value using dot notation.
 */
 func (g *Container) Path(path string) *Container {
@@ -46,8 +59,8 @@ func (g *Container) Path(path string) *Container {
 }
 
 /*
-Search - Attempt to find and return an object within the JSON structure by specifying the hierarchy of
-field names to locate the target.
+Search - Attempt to find and return an object within the JSON structure by specifying the hierarchy
+of field names to locate the target.
 */
 func (g *Container) Search(hierarchy ...string) *Container {
 	var object interface{}
@@ -60,7 +73,6 @@ func (g *Container) Search(hierarchy ...string) *Container {
 			return &Container{nil}
 		}
 	}
-
 	return &Container{object}
 }
 
@@ -72,59 +84,101 @@ func (g *Container) S(hierarchy ...string) *Container {
 }
 
 /*
-Data - Return the contained data as an interface{}.
-*/
-func (g *Container) Data() interface{} {
-	return g.object
-}
-
-/*
-Children - Return a slice of all the children of the array. This also works for objects,
-however, the children returned for an object will NOT be in order and you lose the names
-of the returned objects this way.
+Children - Return a slice of all the children of the array. This also works for objects, however, the
+children returned for an object will NOT be in order and you lose the names of the returned objects
+this way.
 */
 func (g *Container) Children() ([]*Container, error) {
 	if array, ok := g.Data().([]interface{}); ok {
-
 		children := make([]*Container, len(array))
 		for i := 0; i < len(array); i++ {
 			children[i] = &Container{array[i]}
 		}
-
 		return children, nil
-
-	} else if mmap, ok := g.Data().(map[string]interface{}); ok {
-
+	}
+	if mmap, ok := g.Data().(map[string]interface{}); ok {
 		children := []*Container{}
 		for _, obj := range mmap {
 			children = append(children, &Container{obj})
 		}
-
 		return children, nil
 	}
-
 	return nil, errors.New("parent was not a valid JSON object or array")
 }
 
-/*
-Set - Set the value for a child of a JSON object. The child doesn't have to already exist.
-*/
-func (g *Container) Set(target string, value interface{}) error {
-	if mmap, ok := g.Data().(map[string]interface{}); ok {
-		mmap[target] = value
-	} else {
-		return errors.New("parent was not a valid JSON object")
-	}
-
-	return nil
-}
-
-/*-----------------------------------------------------------------------------------------------------------------
+/*---------------------------------------------------------------------------------------------------
  */
 
 /*
-Array modification/search - Keeping these options simple right now, no need for anything more complicated
-since you can just cast to []interface{}, modify and then reassign with Set.
+Set - Set the value of a field at a JSON path, any parts of the path that do not exist will be
+constructed, and if a collision occurs with a non object type whilst iterating the path an error is
+returned.
+*/
+func (g *Container) Set(value interface{}, path ...string) (*Container, error) {
+	var object interface{}
+
+	if g.object == nil {
+		g.object = map[string]interface{}{}
+	}
+	object = g.object
+	for target := 0; target < len(path); target++ {
+		if mmap, ok := object.(map[string]interface{}); ok {
+			if target == len(path)-1 {
+				mmap[path[target]] = value
+			} else if mmap[path[target]] == nil {
+				mmap[path[target]] = map[string]interface{}{}
+			}
+			object = mmap[path[target]]
+		} else {
+			return &Container{nil}, errors.New("encountered object collision whilst building path")
+		}
+	}
+	return &Container{object}, nil
+}
+
+/*
+SetP - Does the same as Set, but using a dot notation JSON path.
+*/
+func (g *Container) SetP(value interface{}, path string) (*Container, error) {
+	return g.Set(value, strings.Split(path, ".")...)
+}
+
+/*
+Object - Create a new JSON object at a path. Returns an error if the path contains a collision with
+a non object type.
+*/
+func (g *Container) Object(path ...string) (*Container, error) {
+	return g.Set(map[string]interface{}{}, path...)
+}
+
+/*
+ObjectP - Does the same as Object, but using a dot notation JSON path.
+*/
+func (g *Container) ObjectP(path string) (*Container, error) {
+	return g.Object(strings.Split(path, ".")...)
+}
+
+/*
+Array - Create a new JSON array at a path. Returns an error if the path contains a collision with
+a non object type.
+*/
+func (g *Container) Array(path ...string) (*Container, error) {
+	return g.Set([]interface{}{}, path...)
+}
+
+/*
+ArrayP - Does the same as Array, but using a dot notation JSON path.
+*/
+func (g *Container) ArrayP(path string) (*Container, error) {
+	return g.Array(strings.Split(path, ".")...)
+}
+
+/*---------------------------------------------------------------------------------------------------
+ */
+
+/*
+Array modification/search - Keeping these options simple right now, no need for anything more
+complicated since you can just cast to []interface{}, modify and then reassign with Set.
 */
 
 /*
@@ -141,7 +195,6 @@ func (g *Container) Push(target string, value interface{}) error {
 	} else {
 		return errors.New("parent was not a valid JSON object")
 	}
-
 	return nil
 }
 
@@ -154,10 +207,8 @@ func (g *Container) RemoveElement(target string, index int) error {
 	}
 
 	if mmap, ok := g.Data().(map[string]interface{}); ok {
-
 		arrayTarget := mmap[target]
 		if array, ok := arrayTarget.([]interface{}); ok {
-
 			if index < len(array) {
 				mmap[target] = append(array[:index], array[index+1:]...)
 			} else {
@@ -179,24 +230,19 @@ func (g *Container) GetElement(target string, index int) *Container {
 	if index < 0 {
 		return &Container{nil}
 	}
-
 	if mmap, ok := g.Data().(map[string]interface{}); ok {
-
 		arrayTarget := mmap[target]
 		if array, ok := arrayTarget.([]interface{}); ok {
-
 			if index < len(array) {
 				return &Container{array[index]}
 			}
 		}
 	}
-
 	return &Container{nil}
 }
 
 /*
-CountElements - Count the elements of a JSON array, returns -1 if the target
-is not an array
+CountElements - Count the elements of a JSON array, returns -1 if the target is not an array
 */
 func (g *Container) CountElements(target string) int {
 	if mmap, ok := g.Data().(map[string]interface{}); ok {
@@ -208,45 +254,8 @@ func (g *Container) CountElements(target string) int {
 	return -1
 }
 
-/*-----------------------------------------------------------------------------------------------------------------
+/*---------------------------------------------------------------------------------------------------
  */
-
-/*
-CreateObject - Create a new JSON object. Returns a container of the new object.
-*/
-func (g *Container) CreateObject(name string) *Container {
-	if mmap, ok := g.Data().(map[string]interface{}); ok {
-		mmap[name] = map[string]interface{}{}
-		return &Container{mmap[name]}
-	}
-
-	return &Container{nil}
-}
-
-/*
-CO - Shorthand method for CreateObject.
-*/
-func (g *Container) CO(name string) *Container {
-	return g.CreateObject(name)
-}
-
-/*
-CreateArray - Create a new JSON array.
-*/
-func (g *Container) CreateArray(name string) error {
-	if mmap, ok := g.Data().(map[string]interface{}); ok {
-		mmap[name] = []interface{}{}
-		return nil
-	}
-	return errors.New("container was not a valid object")
-}
-
-/*
-CA - Shorthand method for CreateArray.
-*/
-func (g *Container) CA(name string) error {
-	return g.CreateArray(name)
-}
 
 /*
 String - Converts the contained object back to a JSON formatted string.
@@ -257,7 +266,6 @@ func (g *Container) String() string {
 			return string(bytes)
 		}
 	}
-
 	return "{}"
 }
 
@@ -280,11 +288,9 @@ func ParseJSON(sample []byte) (*Container, error) {
 	if err := json.Unmarshal(sample, &gabs.object); err != nil {
 		return nil, err
 	}
-
 	if _, ok := gabs.object.(map[string]interface{}); ok {
 		return &gabs, nil
 	}
-
 	return nil, errors.New("json appears to contain no data")
 }
 
@@ -305,3 +311,6 @@ func ParseJSONFile(path string) (*Container, error) {
 	}
 	return nil, errors.New("file path was invalid")
 }
+
+/*---------------------------------------------------------------------------------------------------
+ */
