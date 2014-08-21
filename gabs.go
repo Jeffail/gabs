@@ -60,7 +60,9 @@ func (g *Container) Path(path string) *Container {
 
 /*
 Search - Attempt to find and return an object within the JSON structure by specifying the hierarchy
-of field names to locate the target.
+of field names to locate the target. If the search encounters an array and has not reached the end
+target then it will iterate each object of the array for the target and return all of the results in
+a JSON array.
 */
 func (g *Container) Search(hierarchy ...string) *Container {
 	var object interface{}
@@ -69,6 +71,19 @@ func (g *Container) Search(hierarchy ...string) *Container {
 	for target := 0; target < len(hierarchy); target++ {
 		if mmap, ok := object.(map[string]interface{}); ok {
 			object = mmap[hierarchy[target]]
+		} else if marray, ok := object.([]interface{}); ok {
+			tmpArray := []interface{}{}
+			for _, val := range marray {
+				tmpGabs := &Container{val}
+				res := tmpGabs.Search(hierarchy[target:]...).Data()
+				if res != nil {
+					tmpArray = append(tmpArray, res)
+				}
+			}
+			if len(tmpArray) == 0 {
+				return &Container{nil}
+			}
+			return &Container{tmpArray}
 		} else {
 			return &Container{nil}
 		}

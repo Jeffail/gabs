@@ -72,6 +72,25 @@ third
 
 Children() will return all children of an array in order. This also works on objects, however, the children will be returned in a random order.
 
+###Searching through arrays
+
+If your JSON structure contains arrays you can still search the fields of the objects within the array, this returns a JSON array containing the results for each element.
+
+```go
+...
+
+jsonParsed, _ := gabs.ParseJSON([]byte(`{"array":[ {"value":1}, {"value":2}, {"value":3} ]}`))
+fmt.Println(jsonParsed.Path("array.value").String())
+
+...
+```
+
+Will print:
+
+```
+[1,2,3]
+```
+
 ###Generating JSON
 
 ```go
@@ -100,8 +119,6 @@ Will print:
 
 ```go
 ...
-
-var err error
 
 jsonObj, _ := gabs.Consume(map[string]interface{}{})
 
