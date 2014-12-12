@@ -197,76 +197,91 @@ complicated since you can just cast to []interface{}, modify and then reassign w
 */
 
 /*
-Push - Push a value onto a JSON array.
+ArrayAppend - Append a value onto a JSON array.
 */
-func (g *Container) Push(target string, value interface{}) error {
-	if mmap, ok := g.Data().(map[string]interface{}); ok {
-		arrayTarget := mmap[target]
-		if array, ok := arrayTarget.([]interface{}); ok {
-			mmap[target] = append(array, value)
-		} else {
-			return errors.New("target object was not an array")
-		}
-	} else {
-		return errors.New("parent was not a valid JSON object")
+func (g *Container) ArrayAppend(value interface{}, path ...string) error {
+	array, ok := g.Search(path...).Data().([]interface{})
+	if !ok {
+		return errors.New("target object was not an array")
 	}
-	return nil
+	array = append(array, value)
+	_, err := g.Set(array, path...)
+	return err
 }
 
 /*
-RemoveElement - Remove a value from a JSON array.
+ArrayAppendP - Append a value onto a JSON array using a dot notation JSON path.
 */
-func (g *Container) RemoveElement(target string, index int) error {
+func (g *Container) ArrayAppendP(value interface{}, path string) error {
+	return g.ArrayAppend(value, strings.Split(path, ".")...)
+}
+
+/*
+ArrayRemove - Remove an element from a JSON array.
+*/
+func (g *Container) ArrayRemove(index int, path ...string) error {
 	if index < 0 {
 		return errors.New("target index out of bounds")
 	}
-
-	if mmap, ok := g.Data().(map[string]interface{}); ok {
-		arrayTarget := mmap[target]
-		if array, ok := arrayTarget.([]interface{}); ok {
-			if index < len(array) {
-				mmap[target] = append(array[:index], array[index+1:]...)
-			} else {
-				return errors.New("target index was out of bounds of array")
-			}
-		} else {
-			return errors.New("target object was not an array")
-		}
+	array, ok := g.Search(path...).Data().([]interface{})
+	if !ok {
+		return errors.New("target object was not an array")
+	}
+	if index < len(array) {
+		array = append(array[:index], array[index+1:]...)
 	} else {
-		return errors.New("parent was not a valid JSON object")
+		return errors.New("target index was out of bounds of array")
 	}
-	return nil
+	_, err := g.Set(array, path...)
+	return err
 }
 
 /*
-GetElement - Get the desired element from a JSON array
+ArrayRemoveP - Remove an element from a JSON array using a dot notation JSON path.
 */
-func (g *Container) GetElement(target string, index int) *Container {
+func (g *Container) ArrayRemoveP(index int, path string) error {
+	return g.ArrayRemove(index, strings.Split(path, ".")...)
+}
+
+/*
+ArrayElement - Access an element from a JSON array.
+*/
+func (g *Container) ArrayElement(index int, path ...string) (*Container, error) {
 	if index < 0 {
-		return &Container{nil}
+		return &Container{nil}, errors.New("target index out of bounds")
 	}
-	if mmap, ok := g.Data().(map[string]interface{}); ok {
-		arrayTarget := mmap[target]
-		if array, ok := arrayTarget.([]interface{}); ok {
-			if index < len(array) {
-				return &Container{array[index]}
-			}
-		}
+	array, ok := g.Search(path...).Data().([]interface{})
+	if !ok {
+		return &Container{nil}, errors.New("target object was not an array")
 	}
-	return &Container{nil}
+	if index < len(array) {
+		return &Container{array[index]}, nil
+	}
+	return &Container{nil}, errors.New("target index was out of bounds of array")
 }
 
 /*
-CountElements - Count the elements of a JSON array, returns -1 if the target is not an array
+ArrayElementP - Access an element from a JSON array using a dot notation JSON path.
 */
-func (g *Container) CountElements(target string) int {
-	if mmap, ok := g.Data().(map[string]interface{}); ok {
-		arrayTarget := mmap[target]
-		if array, ok := arrayTarget.([]interface{}); ok {
-			return len(array)
-		}
+func (g *Container) ArrayElementP(index int, path string) (*Container, error) {
+	return g.ArrayElement(index, strings.Split(path, ".")...)
+}
+
+/*
+ArrayCount - Count the number of elements in a JSON array.
+*/
+func (g *Container) ArrayCount(path ...string) (int, error) {
+	if array, ok := g.Search(path...).Data().([]interface{}); ok {
+		return len(array), nil
 	}
-	return -1
+	return 0, errors.New("target object was not an array")
+}
+
+/*
+ArrayCountP - Count the number of elements in a JSON array using a dot notation JSON path.
+*/
+func (g *Container) ArrayCountP(path string) (int, error) {
+	return g.ArrayCount(strings.Split(path, ".")...)
 }
 
 /*---------------------------------------------------------------------------------------------------
@@ -285,7 +300,14 @@ func (g *Container) String() string {
 }
 
 /*
-Consume - Gobble up an already converted JSON object.
+New - Create a new gabs JSON object.
+*/
+func New() *Container {
+	return &Container{map[string]interface{}{}}
+}
+
+/*
+Consume - Gobble up an already converted JSON object, or a fresh map[string]interface{} object.
 */
 func Consume(root interface{}) (*Container, error) {
 	if _, ok := root.(map[string]interface{}); ok {
@@ -325,6 +347,84 @@ func ParseJSONFile(path string) (*Container, error) {
 		return nil, err
 	}
 	return nil, errors.New("file path was invalid")
+}
+
+/*---------------------------------------------------------------------------------------------------
+ */
+
+// DEPRECATED METHODS
+
+/*
+Push - DEPRECATED: Push a value onto a JSON array.
+*/
+func (g *Container) Push(target string, value interface{}) error {
+	if mmap, ok := g.Data().(map[string]interface{}); ok {
+		arrayTarget := mmap[target]
+		if array, ok := arrayTarget.([]interface{}); ok {
+			mmap[target] = append(array, value)
+		} else {
+			return errors.New("target object was not an array")
+		}
+	} else {
+		return errors.New("parent was not a valid JSON object")
+	}
+	return nil
+}
+
+/*
+RemoveElement - DEPRECATED: Remove a value from a JSON array.
+*/
+func (g *Container) RemoveElement(target string, index int) error {
+	if index < 0 {
+		return errors.New("target index out of bounds")
+	}
+	if mmap, ok := g.Data().(map[string]interface{}); ok {
+		arrayTarget := mmap[target]
+		if array, ok := arrayTarget.([]interface{}); ok {
+			if index < len(array) {
+				mmap[target] = append(array[:index], array[index+1:]...)
+			} else {
+				return errors.New("target index was out of bounds of array")
+			}
+		} else {
+			return errors.New("target object was not an array")
+		}
+	} else {
+		return errors.New("parent was not a valid JSON object")
+	}
+	return nil
+}
+
+/*
+GetElement - DEPRECATED: Get the desired element from a JSON array
+*/
+func (g *Container) GetElement(target string, index int) *Container {
+	if index < 0 {
+		return &Container{nil}
+	}
+	if mmap, ok := g.Data().(map[string]interface{}); ok {
+		arrayTarget := mmap[target]
+		if array, ok := arrayTarget.([]interface{}); ok {
+			if index < len(array) {
+				return &Container{array[index]}
+			}
+		}
+	}
+	return &Container{nil}
+}
+
+/*
+CountElements - DEPRECATED: Count the elements of a JSON array, returns -1 if the target is not an
+array
+*/
+func (g *Container) CountElements(target string) int {
+	if mmap, ok := g.Data().(map[string]interface{}); ok {
+		arrayTarget := mmap[target]
+		if array, ok := arrayTarget.([]interface{}); ok {
+			return len(array)
+		}
+	}
+	return -1
 }
 
 /*---------------------------------------------------------------------------------------------------

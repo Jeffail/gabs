@@ -96,13 +96,12 @@ Will print:
 ```go
 ...
 
-var err error
+jsonObj := gabs.New()
+// or gabs.Consume(jsonObject) to work on an existing map[string]interface{}
 
-jsonObj, _ := gabs.Consume(map[string]interface{}{})
-
-_, err = jsonObj.Set(10, "outter", "inner", "value")
-_, err = jsonObj.SetP(20, "outter.inner.value2")
-_, err = jsonObj.Set(30, "outter", "inner2", "value3")
+jsonObj.Set(10, "outter", "inner", "value")
+jsonObj.SetP(20, "outter.inner.value2")
+jsonObj.Set(30, "outter", "inner2", "value3")
 
 fmt.Println(jsonObj.String())
 
@@ -120,13 +119,14 @@ Will print:
 ```go
 ...
 
-jsonObj, _ := gabs.Consume(map[string]interface{}{})
+jsonObj := gabs.New()
 
-jsonObj.Array("array")
+jsonObj.Array("foo", "array")
+// Or .ArrayP("foo.array")
 
-jsonObj.Push("array", 10)
-jsonObj.Push("array", 20)
-jsonObj.Push("array", 30)
+jsonObj.ArrayAppend(10, "foo", "array")
+jsonObj.ArrayAppend(20, "foo", "array")
+jsonObj.ArrayAppend(30, "foo", "array")
 
 fmt.Println(jsonObj.String())
 
@@ -136,7 +136,7 @@ fmt.Println(jsonObj.String())
 Will print:
 
 ```
-{"array":[10,20,30]}
+{"foo":{"array":[10,20,30]}}
 ```
 
 ###Converting back to JSON

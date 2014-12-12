@@ -148,7 +148,7 @@ func TestExamples(t *testing.T) {
 func TestExamples2(t *testing.T) {
 	var err error
 
-	jsonObj, _ := Consume(map[string]interface{}{})
+	jsonObj := New()
 
 	_, err = jsonObj.Set(10, "outter", "inner", "value")
 	if err != nil {
@@ -175,13 +175,30 @@ func TestExamples2(t *testing.T) {
 
 	jsonObj.Array("array")
 
-	jsonObj.Push("array", 10)
-	jsonObj.Push("array", 20)
-	jsonObj.Push("array", 30)
+	jsonObj.ArrayAppend(10, "array")
+	jsonObj.ArrayAppend(20, "array")
+	jsonObj.ArrayAppend(30, "array")
 
 	expected = `{"array":[10,20,30]}`
 	if jsonObj.String() != expected {
 		t.Errorf("Non matched output: %v != %v", expected, jsonObj.String())
+	}
+}
+
+func TestExamples3(t *testing.T) {
+	jsonObj := New()
+
+	jsonObj.Array("foo", "array")
+
+	jsonObj.ArrayAppend(10, "foo", "array")
+	jsonObj.ArrayAppend(20, "foo", "array")
+	jsonObj.ArrayAppend(30, "foo", "array")
+
+	result := jsonObj.String()
+	expected := `{"foo":{"array":[10,20,30]}}`
+
+	if result != expected {
+		t.Errorf("Non matched output: %v != %v", result, expected)
 	}
 }
 
@@ -273,19 +290,21 @@ func TestChildren(t *testing.T) {
 		]
 	}`))
 
-	numChildren1 := json2.CountElements("values")
-	numChildren2 := json3.CountElements("values")
-	numChildren3 := json3.CountElements("valuesNOTREAL")
+	numChildren1, _ := json2.ArrayCount("values")
+	numChildren2, _ := json3.ArrayCount("values")
+	if _, err := json3.ArrayCount("valuesNOTREAL"); err == nil {
+		t.Errorf("expected numChildren3 to fail")
+	}
 
-	if numChildren1 != 3 || numChildren2 != 0 || numChildren3 != -1 {
-		t.Errorf("CountElements, expected 3, 0 and -1, received %v, %v and %v",
-			numChildren1, numChildren2, numChildren3)
+	if numChildren1 != 3 || numChildren2 != 0 {
+		t.Errorf("CountElements, expected 3 and 0, received %v and %v",
+			numChildren1, numChildren2)
 	}
 
 	objects, _ = json2.S("values").Children()
 	for _, object := range objects {
 		object.Set("hello world", "child")
-		json3.Push("values", object.Data())
+		json3.ArrayAppend(object.Data(), "values")
 	}
 
 	expected = `{"values":[{"child":"hello world","objectOne":{}},{"child":"hello world",` +
@@ -351,21 +370,21 @@ func TestArrays(t *testing.T) {
 		}
 	}
 
-	json2.Push("places", map[string]interface{}{})
-	json2.Push("places", map[string]interface{}{})
-	json2.Push("places", map[string]interface{}{})
+	json2.ArrayAppend(map[string]interface{}{}, "places")
+	json2.ArrayAppend(map[string]interface{}{}, "places")
+	json2.ArrayAppend(map[string]interface{}{}, "places")
 
 	// Using float64 for this test even though it's completely inappropriate because
 	// later on the API might do something clever with types, in which case all numbers
 	// will become float64.
 	for i := 0; i < 3; i++ {
-		obj, _ := json2.GetElement("places", i).Object(fmt.Sprintf("object%v", i))
-		obj.Set(float64(i), "index")
+		obj, _ := json2.ArrayElement(i, "places")
+		obj2, _ := obj.Object(fmt.Sprintf("object%v", i))
+		obj2.Set(float64(i), "index")
 	}
 
 	children, _ := json2.S("places").Children()
 	for i, obj := range children {
-
 		if id, ok := obj.S(fmt.Sprintf("object%v", i)).S("index").Data().(float64); ok {
 			if id != float64(i) {
 				t.Errorf("Wrong index somehow, expected %v, received %v", i, id)
@@ -375,7 +394,7 @@ func TestArrays(t *testing.T) {
 		}
 	}
 
-	if err := json2.RemoveElement("places", 1); err != nil {
+	if err := json2.ArrayRemove(1, "places"); err != nil {
 		t.Errorf("Error removing element: %v", err)
 	}
 
@@ -488,9 +507,9 @@ func TestCreation(t *testing.T) {
 	inner.Set(20, "second")
 
 	inner.Array("array")
-	inner.Push("array", "first element of the array")
-	inner.Push("array", 2)
-	inner.Push("array", "three")
+	inner.ArrayAppend("first element of the array", "array")
+	inner.ArrayAppend(2, "array")
+	inner.ArrayAppend("three", "array")
 
 	expected := `{"test":{"inner":{"array":["first element of the array",2,"three"],` +
 		`"first":10,"second":20}}}`
