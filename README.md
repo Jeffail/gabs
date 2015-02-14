@@ -122,6 +122,7 @@ To pretty-print:
 fmt.Println(jsonObj.StringIndent("", "  "))
 
 ...
+```
 
 Will print:
 
@@ -137,7 +138,6 @@ Will print:
     }
   }
 }
-```
 ```
 
 ###Generating Arrays
