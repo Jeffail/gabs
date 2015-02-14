@@ -179,9 +179,16 @@ func TestExamples2(t *testing.T) {
 	jsonObj.ArrayAppend(20, "array")
 	jsonObj.ArrayAppend(30, "array")
 
-	expected = `{"array":[10,20,30]}`
-	if jsonObj.String() != expected {
-		t.Errorf("Non matched output: %v != %v", expected, jsonObj.String())
+	expected = `{
+      "array": [
+        10,
+        20,
+        30
+      ]
+    }`
+	result := jsonObj.StringIndent("    ", "  ")
+	if result != expected {
+		t.Errorf("Non matched output: %v != %v", expected, result)
 	}
 }
 

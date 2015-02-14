@@ -300,6 +300,18 @@ func (g *Container) String() string {
 }
 
 /*
+StringIndent - Converts the contained object back to a JSON formatted string with prefix and indent.
+*/
+func (g *Container) StringIndent(prefix string, indent string) string {
+	if g.object != nil {
+		if bytes, err := json.MarshalIndent(g.object, prefix, indent); err == nil {
+			return string(bytes)
+		}
+	}
+	return "{}"
+}
+
+/*
 New - Create a new gabs JSON object.
 */
 func New() *Container {
