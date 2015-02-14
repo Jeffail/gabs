@@ -114,6 +114,32 @@ Will print:
 {"outter":{"inner":{"value":10,"value2":20},"inner2":{"value3":30}}}
 ```
 
+To pretty-print:
+
+```go
+...
+
+fmt.Println(jsonObj.StringIndent("", "  "))
+
+...
+
+Will print:
+
+```
+{
+  "outter": {
+    "inner": {
+      "value": 10,
+      "value2": 20
+    },
+    "inner2": {
+      "value3": 30
+    }
+  }
+}
+```
+```
+
 ###Generating Arrays
 
 ```go
