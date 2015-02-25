@@ -491,6 +491,24 @@ func TestShorthand(t *testing.T) {
 }
 
 func TestInvalid(t *testing.T) {
+	invalidJSONSamples := []string{
+		`{dfads"`,
+		``,
+		`""`,
+		`"hello"`,
+		"{}\n{}",
+	}
+
+	for _, sample := range invalidJSONSamples {
+		if _, err := ParseJSON([]byte(sample)); err == nil {
+			t.Errorf("parsing invalid JSON '%v' did not return error", sample)
+		}
+	}
+
+	if _, err := ParseJSON(nil); err == nil {
+		t.Errorf("parsing nil did not return error")
+	}
+
 	validObj, err := ParseJSON([]byte(`{}`))
 	if err != nil {
 		t.Errorf("failed to parse '{}'")
