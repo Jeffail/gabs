@@ -33,6 +33,35 @@ import (
 /*---------------------------------------------------------------------------------------------------
  */
 
+var (
+	// ErrOutOfBounds - Index out of bounds.
+	ErrOutOfBounds = errors.New("out of bounds")
+
+	// ErrNotObjOrArray - The target is not an object or array type.
+	ErrNotObjOrArray = errors.New("not an object or array")
+
+	// ErrNotObj - The target is not an object type.
+	ErrNotObj = errors.New("not an object")
+
+	// ErrNotArray - The target is not an array type.
+	ErrNotArray = errors.New("not an array")
+
+	// ErrPathCollision - Creating a path failed because an element collided with an existing value.
+	ErrPathCollision = errors.New("encountered value collision whilst building path")
+
+	// ErrInvalidInputObj - The input value was not a map[string]interface{}.
+	ErrInvalidInputObj = errors.New("invalid input object")
+
+	// ErrInvalidInputText - The input data could not be parsed.
+	ErrInvalidInputText = errors.New("input text could not be parsed")
+
+	// ErrInvalidPath - The filepath was not valid.
+	ErrInvalidPath = errors.New("invalid file path")
+)
+
+/*---------------------------------------------------------------------------------------------------
+ */
+
 /*
 Container - an internal structure that holds a reference to the core interface map of the parsed
 json. Use this container to move context.
@@ -118,7 +147,7 @@ func (g *Container) Children() ([]*Container, error) {
 		}
 		return children, nil
 	}
-	return nil, errors.New("parent was not a valid JSON object or array")
+	return nil, ErrNotObjOrArray
 }
 
 /*---------------------------------------------------------------------------------------------------
@@ -145,7 +174,7 @@ func (g *Container) Set(value interface{}, path ...string) (*Container, error) {
 			}
 			object = mmap[path[target]]
 		} else {
-			return &Container{nil}, errors.New("encountered object collision whilst building path")
+			return &Container{nil}, ErrPathCollision
 		}
 	}
 	return &Container{object}, nil
@@ -202,7 +231,7 @@ ArrayAppend - Append a value onto a JSON array.
 func (g *Container) ArrayAppend(value interface{}, path ...string) error {
 	array, ok := g.Search(path...).Data().([]interface{})
 	if !ok {
-		return errors.New("target object was not an array")
+		return ErrNotArray
 	}
 	array = append(array, value)
 	_, err := g.Set(array, path...)
@@ -221,16 +250,16 @@ ArrayRemove - Remove an element from a JSON array.
 */
 func (g *Container) ArrayRemove(index int, path ...string) error {
 	if index < 0 {
-		return errors.New("target index out of bounds")
+		return ErrOutOfBounds
 	}
 	array, ok := g.Search(path...).Data().([]interface{})
 	if !ok {
-		return errors.New("target object was not an array")
+		return ErrNotArray
 	}
 	if index < len(array) {
 		array = append(array[:index], array[index+1:]...)
 	} else {
-		return errors.New("target index was out of bounds of array")
+		return ErrOutOfBounds
 	}
 	_, err := g.Set(array, path...)
 	return err
@@ -248,16 +277,16 @@ ArrayElement - Access an element from a JSON array.
 */
 func (g *Container) ArrayElement(index int, path ...string) (*Container, error) {
 	if index < 0 {
-		return &Container{nil}, errors.New("target index out of bounds")
+		return &Container{nil}, ErrOutOfBounds
 	}
 	array, ok := g.Search(path...).Data().([]interface{})
 	if !ok {
-		return &Container{nil}, errors.New("target object was not an array")
+		return &Container{nil}, ErrNotArray
 	}
 	if index < len(array) {
 		return &Container{array[index]}, nil
 	}
-	return &Container{nil}, errors.New("target index was out of bounds of array")
+	return &Container{nil}, ErrOutOfBounds
 }
 
 /*
@@ -274,7 +303,7 @@ func (g *Container) ArrayCount(path ...string) (int, error) {
 	if array, ok := g.Search(path...).Data().([]interface{}); ok {
 		return len(array), nil
 	}
-	return 0, errors.New("target object was not an array")
+	return 0, ErrNotArray
 }
 
 /*
@@ -325,7 +354,7 @@ func Consume(root interface{}) (*Container, error) {
 	if _, ok := root.(map[string]interface{}); ok {
 		return &Container{root}, nil
 	}
-	return nil, errors.New("root was not a valid JSON object")
+	return nil, ErrInvalidInputObj
 }
 
 /*
@@ -340,7 +369,7 @@ func ParseJSON(sample []byte) (*Container, error) {
 	if _, ok := gabs.object.(map[string]interface{}); ok {
 		return &gabs, nil
 	}
-	return nil, errors.New("json appears to contain no data")
+	return nil, ErrInvalidInputText
 }
 
 /*
@@ -358,7 +387,7 @@ func ParseJSONFile(path string) (*Container, error) {
 		}
 		return nil, err
 	}
-	return nil, errors.New("file path was invalid")
+	return nil, ErrInvalidPath
 }
 
 /*---------------------------------------------------------------------------------------------------
@@ -375,10 +404,10 @@ func (g *Container) Push(target string, value interface{}) error {
 		if array, ok := arrayTarget.([]interface{}); ok {
 			mmap[target] = append(array, value)
 		} else {
-			return errors.New("target object was not an array")
+			return ErrNotArray
 		}
 	} else {
-		return errors.New("parent was not a valid JSON object")
+		return ErrNotObj
 	}
 	return nil
 }
@@ -388,7 +417,7 @@ RemoveElement - DEPRECATED: Remove a value from a JSON array.
 */
 func (g *Container) RemoveElement(target string, index int) error {
 	if index < 0 {
-		return errors.New("target index out of bounds")
+		return ErrOutOfBounds
 	}
 	if mmap, ok := g.Data().(map[string]interface{}); ok {
 		arrayTarget := mmap[target]
@@ -396,13 +425,13 @@ func (g *Container) RemoveElement(target string, index int) error {
 			if index < len(array) {
 				mmap[target] = append(array[:index], array[index+1:]...)
 			} else {
-				return errors.New("target index was out of bounds of array")
+				return ErrOutOfBounds
 			}
 		} else {
-			return errors.New("target object was not an array")
+			return ErrNotArray
 		}
 	} else {
-		return errors.New("parent was not a valid JSON object")
+		return ErrNotObj
 	}
 	return nil
 }
