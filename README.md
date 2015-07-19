@@ -46,6 +46,22 @@ value, ok = jsonParsed.Path("does.not.exist").Data().(float64)
 ...
 ```
 
+###Iterating objects
+
+```go
+...
+
+jsonParsed, _ := gabs.ParseJSON([]byte(`{"object":{ "first": 1, "second": 2, "third": 3 }}`))
+
+// S is shorthand for Search
+children, _ := jsonParsed.S("object").ChildrenMap()
+for key, child := range children {
+	fmt.Printf("key: %v, value: %v\n", key, child.Data().(string))
+}
+
+...
+```
+
 ###Iterating arrays
 
 ```go
@@ -163,6 +179,37 @@ Will print:
 
 ```
 {"foo":{"array":[10,20,30]}}
+```
+
+Working with arrays by index:
+
+```go
+...
+
+jsonObj := gabs.New()
+
+// Create an array with the length of 3
+jsonObj.ArrayOfSize(3, "foo")
+
+jsonObj.S("foo").SetIndex("test1", 0)
+jsonObj.S("foo").SetIndex("test2", 1)
+
+// Create an embedded array with the length of 3
+jsonObj.S("foo").ArrayOfSizeI(3, 2)
+
+jsonObj.S("foo").Index(2).SetIndex(1, 0)
+jsonObj.S("foo").Index(2).SetIndex(2, 1)
+jsonObj.S("foo").Index(2).SetIndex(3, 2)
+
+fmt.Println(jsonObj.String())
+
+...
+```
+
+Will print:
+
+```
+{"foo":["test1","test2",[1,2,3]]}
 ```
 
 ###Converting back to JSON
