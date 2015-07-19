@@ -128,9 +128,23 @@ func (g *Container) S(hierarchy ...string) *Container {
 }
 
 /*
-Children - Return a slice of all the children of the array. This also works for objects, however, the
-children returned for an object will NOT be in order and you lose the names of the returned objects
-this way.
+Index - Attempt to find and return an object with a JSON array by specifying the index of the
+target.
+*/
+func (g *Container) Index(index int) *Container {
+	if array, ok := g.Data().([]interface{}); ok {
+		if index >= len(array) {
+			return &Container{nil}
+		}
+		return &Container{array[index]}
+	}
+	return &Container{nil}
+}
+
+/*
+Children - Return a slice of all the children of the array. This also works for objects, however,
+the children returned for an object will NOT be in order and you lose the names of the returned
+objects this way.
 */
 func (g *Container) Children() ([]*Container, error) {
 	if array, ok := g.Data().([]interface{}); ok {
@@ -148,6 +162,20 @@ func (g *Container) Children() ([]*Container, error) {
 		return children, nil
 	}
 	return nil, ErrNotObjOrArray
+}
+
+/*
+ChildrenMap - Return a map of all the children of an object.
+*/
+func (g *Container) ChildrenMap() (map[string]*Container, error) {
+	if mmap, ok := g.Data().(map[string]interface{}); ok {
+		children := map[string]*Container{}
+		for name, obj := range mmap {
+			children[name] = &Container{obj}
+		}
+		return children, nil
+	}
+	return nil, ErrNotObj
 }
 
 /*---------------------------------------------------------------------------------------------------
@@ -188,6 +216,20 @@ func (g *Container) SetP(value interface{}, path string) (*Container, error) {
 }
 
 /*
+SetIndex - Set a value of an array element based on the index.
+*/
+func (g *Container) SetIndex(value interface{}, index int) (*Container, error) {
+	if array, ok := g.Data().([]interface{}); ok {
+		if index >= len(array) {
+			return &Container{nil}, ErrOutOfBounds
+		}
+		array[index] = value
+		return &Container{array[index]}, nil
+	}
+	return &Container{nil}, ErrNotArray
+}
+
+/*
 Object - Create a new JSON object at a path. Returns an error if the path contains a collision with
 a non object type.
 */
@@ -203,6 +245,14 @@ func (g *Container) ObjectP(path string) (*Container, error) {
 }
 
 /*
+ObjectI - Create a new JSON object at an array index. Returns an error if the object is not an array
+or the index is out of bounds.
+*/
+func (g *Container) ObjectI(index int) (*Container, error) {
+	return g.SetIndex(map[string]interface{}{}, index)
+}
+
+/*
 Array - Create a new JSON array at a path. Returns an error if the path contains a collision with
 a non object type.
 */
@@ -215,6 +265,39 @@ ArrayP - Does the same as Array, but using a dot notation JSON path.
 */
 func (g *Container) ArrayP(path string) (*Container, error) {
 	return g.Array(strings.Split(path, ".")...)
+}
+
+/*
+ArrayI - Create a new JSON array at an array index. Returns an error if the object is not an array
+or the index is out of bounds.
+*/
+func (g *Container) ArrayI(index int) (*Container, error) {
+	return g.SetIndex([]interface{}{}, index)
+}
+
+/*
+ArrayOfSize - Create a new JSON array of a particular size at a path. Returns an error if the path
+contains a collision with a non object type.
+*/
+func (g *Container) ArrayOfSize(size int, path ...string) (*Container, error) {
+	a := make([]interface{}, size)
+	return g.Set(a, path...)
+}
+
+/*
+ArrayOfSizeP - Does the same as ArrayOfSize, but using a dot notation JSON path.
+*/
+func (g *Container) ArrayOfSizeP(size int, path string) (*Container, error) {
+	return g.ArrayOfSize(size, strings.Split(path, ".")...)
+}
+
+/*
+ArrayOfSizeI - Create a new JSON array of a particular size at an array index. Returns an error if
+the object is not an array or the index is out of bounds.
+*/
+func (g *Container) ArrayOfSizeI(size, index int) (*Container, error) {
+	a := make([]interface{}, size)
+	return g.SetIndex(a, index)
 }
 
 /*---------------------------------------------------------------------------------------------------

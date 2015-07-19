@@ -327,6 +327,89 @@ func TestChildren(t *testing.T) {
 	}
 }
 
+func TestChildrenMap(t *testing.T) {
+	json1, _ := ParseJSON([]byte(`{
+		"objectOne":{"num":1},
+		"objectTwo":{"num":2},
+		"objectThree":{"num":3}
+	}`))
+
+	objectMap, err := json1.ChildrenMap()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if len(objectMap) != 3 {
+		t.Errorf("Wrong num of elements in objectMap: %v != %v", len(objectMap), 3)
+		return
+	}
+
+	for key, val := range objectMap {
+		if "objectOne" == key {
+			if val := val.S("num").Data().(float64); val != 1 {
+				t.Errorf("%v != %v", val, 1)
+			}
+		} else if "objectTwo" == key {
+			if val := val.S("num").Data().(float64); val != 2 {
+				t.Errorf("%v != %v", val, 2)
+			}
+		} else if "objectThree" == key {
+			if val := val.S("num").Data().(float64); val != 3 {
+				t.Errorf("%v != %v", val, 3)
+			}
+		} else {
+			t.Errorf("Unexpected key: %v", key)
+		}
+	}
+
+	objectMap["objectOne"].Set(500, "num")
+	if val := json1.Path("objectOne.num").Data().(int); val != 500 {
+		t.Errorf("set objectOne failed: %v != %v", val, 500)
+	}
+}
+
+func TestNestedAnonymousArrays(t *testing.T) {
+	json1, _ := ParseJSON([]byte(`{
+		"array":[
+			[ 1, 2, 3 ],
+			[ 4, 5, 6 ],
+			[ 7, 8, 9 ],
+			[{ "test" : 50 }]
+		]
+	}`))
+
+	childTest, err := json1.S("array").Index(0).Children()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if val := childTest[0].Data().(float64); val != 1 {
+		t.Errorf("child test: %v != %v", val, 1)
+	}
+	if val := childTest[1].Data().(float64); val != 2 {
+		t.Errorf("child test: %v != %v", val, 2)
+	}
+	if val := childTest[2].Data().(float64); val != 3 {
+		t.Errorf("child test: %v != %v", val, 3)
+	}
+
+	if val := json1.Path("array").Index(1).Index(1).Data().(float64); val != 5 {
+		t.Errorf("nested child test: %v != %v", val, 5)
+	}
+
+	if val := json1.Path("array").Index(3).Index(0).S("test").Data().(float64); val != 50 {
+		t.Errorf("nested child object test: %v != %v", val, 50)
+	}
+
+	json1.Path("array").Index(3).Index(0).Set(200, "test")
+
+	if val := json1.Path("array").Index(3).Index(0).S("test").Data().(int); val != 200 {
+		t.Errorf("set nested child object: %v != %v", val, 200)
+	}
+}
+
 func TestArrays(t *testing.T) {
 	json1, _ := ParseJSON([]byte(`{
 		"languages":{
@@ -410,6 +493,85 @@ func TestArrays(t *testing.T) {
 
 	if expected != received {
 		t.Errorf("Wrong output, expected: %v, received: %v", expected, received)
+	}
+}
+
+func TestArraysTwo(t *testing.T) {
+	json1 := New()
+
+	test1, _ := json1.ArrayOfSize(4, "test1")
+
+	if _, err := test1.ArrayOfSizeI(2, 0); err != nil {
+		t.Error(err)
+	}
+	if _, err := test1.ArrayOfSizeI(2, 1); err != nil {
+		t.Error(err)
+	}
+	if _, err := test1.ArrayOfSizeI(2, 2); err != nil {
+		t.Error(err)
+	}
+	if _, err := test1.ArrayOfSizeI(2, 3); err != nil {
+		t.Error(err)
+	}
+
+	if _, err := test1.ArrayOfSizeI(2, 4); err != ErrOutOfBounds {
+		t.Errorf("Index should have been out of bounds")
+	}
+
+	if _, err := json1.S("test1").Index(0).SetIndex(10, 0); err != nil {
+		t.Error(err)
+	}
+	if _, err := json1.S("test1").Index(0).SetIndex(11, 1); err != nil {
+		t.Error(err)
+	}
+
+	if _, err := json1.S("test1").Index(1).SetIndex(12, 0); err != nil {
+		t.Error(err)
+	}
+	if _, err := json1.S("test1").Index(1).SetIndex(13, 1); err != nil {
+		t.Error(err)
+	}
+
+	if _, err := json1.S("test1").Index(2).SetIndex(14, 0); err != nil {
+		t.Error(err)
+	}
+	if _, err := json1.S("test1").Index(2).SetIndex(15, 1); err != nil {
+		t.Error(err)
+	}
+
+	if _, err := json1.S("test1").Index(3).SetIndex(16, 0); err != nil {
+		t.Error(err)
+	}
+	if _, err := json1.S("test1").Index(3).SetIndex(17, 1); err != nil {
+		t.Error(err)
+	}
+
+	if val := json1.S("test1").Index(0).Index(0).Data().(int); val != 10 {
+		t.Errorf("create array: %v != %v", val, 10)
+	}
+	if val := json1.S("test1").Index(0).Index(1).Data().(int); val != 11 {
+		t.Errorf("create array: %v != %v", val, 11)
+	}
+
+	if val := json1.S("test1").Index(1).Index(0).Data().(int); val != 12 {
+		t.Errorf("create array: %v != %v", val, 12)
+	}
+	if val := json1.S("test1").Index(1).Index(1).Data().(int); val != 13 {
+		t.Errorf("create array: %v != %v", val, 13)
+	}
+
+	if val := json1.S("test1").Index(2).Index(0).Data().(int); val != 14 {
+		t.Errorf("create array: %v != %v", val, 14)
+	}
+	if val := json1.S("test1").Index(2).Index(1).Data().(int); val != 15 {
+		t.Errorf("create array: %v != %v", val, 15)
+	}
+
+	if val := json1.S("test1").Index(3).Index(0).Data().(int); val != 16 {
+		t.Errorf("create array: %v != %v", val, 16)
+	}
+	if val := json1.S("test1").Index(3).Index(1).Data().(int); val != 17 {
+		t.Errorf("create array: %v != %v", val, 17)
 	}
 }
 
