@@ -98,6 +98,35 @@ func TestFindArray2(t *testing.T) {
 	}
 }
 
+func TestDeletes(t *testing.T) {
+	jsonParsed, _ := ParseJSON([]byte(`{
+		"outter":{
+			"inner":{
+				"value1":10,
+				"value2":22,
+				"value3":32
+			},
+			"alsoInner":{
+				"value1":20,
+				"value2":42,
+				"value3":92
+			}
+		}
+	}`))
+
+	if err := jsonParsed.Delete("outter", "inner", "value2"); err != nil {
+		t.Error(err)
+	}
+	if err := jsonParsed.DeleteP("outter.alsoInner.value1"); err != nil {
+		t.Error(err)
+	}
+
+	expected := `{"outter":{"alsoInner":{"value2":42,"value3":92},"inner":{"value1":10,"value3":32}}}`
+	if actual := jsonParsed.String(); actual != expected {
+		t.Errorf("Unexpected result from deletes: %v != %v", actual, expected)
+	}
+}
+
 func TestExamples(t *testing.T) {
 	jsonParsed, _ := ParseJSON([]byte(`{
 		"outter":{

@@ -300,6 +300,38 @@ func (g *Container) ArrayOfSizeI(size, index int) (*Container, error) {
 	return g.SetIndex(a, index)
 }
 
+/*
+Delete - Delete an element at a JSON path, an error is returned if the element does not exist.
+*/
+func (g *Container) Delete(path ...string) error {
+	var object interface{}
+
+	if g.object == nil {
+		return ErrNotObj
+	}
+	object = g.object
+	for target := 0; target < len(path); target++ {
+		if mmap, ok := object.(map[string]interface{}); ok {
+			if target == len(path)-1 {
+				delete(mmap, path[target])
+			} else if mmap[path[target]] == nil {
+				return ErrNotObj
+			}
+			object = mmap[path[target]]
+		} else {
+			return ErrNotObj
+		}
+	}
+	return nil
+}
+
+/*
+DeleteP - Does the same as Delete, but using a dot notation JSON path.
+*/
+func (g *Container) DeleteP(path string) error {
+	return g.Delete(strings.Split(path, ".")...)
+}
+
 /*---------------------------------------------------------------------------------------------------
  */
 
