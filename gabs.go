@@ -494,13 +494,15 @@ func ParseJSONFile(path string) (*Container, error) {
 	if len(path) > 0 {
 		cBytes, err := ioutil.ReadFile(path)
 		if err != nil {
-			container, err := ParseJSON(cBytes)
-			if err != nil {
-				return container, nil
-			}
 			return nil, err
 		}
-		return nil, err
+
+		container, err := ParseJSON(cBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		return container, nil
 	}
 	return nil, ErrInvalidPath
 }
