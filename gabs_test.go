@@ -34,6 +34,10 @@ func TestBasic(t *testing.T) {
 	} else {
 		t.Errorf("Didn't find test2")
 	}
+
+	if result := val.Bytes(); string(result) != string(sample) {
+		t.Errorf("Wrong []byte conversion: %s != %s", result, sample)
+	}
 }
 
 func TestFindArray(t *testing.T) {

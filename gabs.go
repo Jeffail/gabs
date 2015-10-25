@@ -432,6 +432,18 @@ func (g *Container) ArrayCountP(path string) (int, error) {
  */
 
 /*
+Bytes - Converts the contained object back to a JSON []byte blob.
+*/
+func (g *Container) Bytes() []byte {
+	if g.object != nil {
+		if bytes, err := json.Marshal(g.object); err == nil {
+			return bytes
+		}
+	}
+	return []byte("{}")
+}
+
+/*
 String - Converts the contained object back to a JSON formatted string.
 */
 func (g *Container) String() string {
