@@ -1,6 +1,7 @@
 package gabs
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -37,6 +38,16 @@ func TestBasic(t *testing.T) {
 
 	if result := val.Bytes(); string(result) != string(sample) {
 		t.Errorf("Wrong []byte conversion: %s != %s", result, sample)
+	}
+}
+
+func TestBasicWithBuffer(t *testing.T) {
+	sample := bytes.NewReader([]byte(`{"test":{"value":10},"test2":20}`))
+
+	_, err := ParseJSONBuffer(sample)
+	if err != nil {
+		t.Errorf("Failed to parse: %v", err)
+		return
 	}
 }
 
