@@ -26,6 +26,7 @@ package gabs
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"io/ioutil"
 	"strings"
 )
@@ -57,6 +58,9 @@ var (
 
 	// ErrInvalidPath - The filepath was not valid.
 	ErrInvalidPath = errors.New("invalid file path")
+
+	// ErrInvalidBuffer - The input buffer contained an invalid JSON string
+	ErrInvalidBuffer = errors.New("input buffer contained invalid JSON")
 )
 
 /*---------------------------------------------------------------------------------------------------
@@ -517,6 +521,23 @@ func ParseJSONFile(path string) (*Container, error) {
 		return container, nil
 	}
 	return nil, ErrInvalidPath
+}
+
+/*
+ParseJSONBuffer - Read the contents of a buffer into a representation of the parsed JSON.
+*/
+func ParseJSONBuffer(buffer io.Reader) (*Container, error) {
+	var gabs Container
+	jsonDecoder := json.NewDecoder(buffer)
+	if err := jsonDecoder.Decode(&gabs.object); err != nil {
+		return nil, err
+	}
+
+	if _, ok := gabs.object.(map[string]interface{}); ok {
+		return &gabs, nil
+	}
+
+	return nil, ErrInvalidBuffer
 }
 
 /*---------------------------------------------------------------------------------------------------
