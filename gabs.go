@@ -191,8 +191,11 @@ constructed, and if a collision occurs with a non object type whilst iterating t
 returned.
 */
 func (g *Container) Set(value interface{}, path ...string) (*Container, error) {
+	if len(path) == 0 {
+		g.object = value
+		return g, nil
+	}
 	var object interface{}
-
 	if g.object == nil {
 		g.object = map[string]interface{}{}
 	}
@@ -482,10 +485,7 @@ func New() *Container {
 Consume - Gobble up an already converted JSON object, or a fresh map[string]interface{} object.
 */
 func Consume(root interface{}) (*Container, error) {
-	if _, ok := root.(map[string]interface{}); ok {
-		return &Container{root}, nil
-	}
-	return nil, ErrInvalidInputObj
+	return &Container{root}, nil
 }
 
 /*
@@ -497,10 +497,8 @@ func ParseJSON(sample []byte) (*Container, error) {
 	if err := json.Unmarshal(sample, &gabs.object); err != nil {
 		return nil, err
 	}
-	if _, ok := gabs.object.(map[string]interface{}); ok {
-		return &gabs, nil
-	}
-	return nil, ErrInvalidInputText
+
+	return &gabs, nil
 }
 
 /*
@@ -533,11 +531,7 @@ func ParseJSONBuffer(buffer io.Reader) (*Container, error) {
 		return nil, err
 	}
 
-	if _, ok := gabs.object.(map[string]interface{}); ok {
-		return &gabs, nil
-	}
-
-	return nil, ErrInvalidBuffer
+	return &gabs, nil
 }
 
 /*---------------------------------------------------------------------------------------------------

@@ -619,6 +619,23 @@ func TestArraysTwo(t *testing.T) {
 	}
 }
 
+func TestArraysRoot(t *testing.T) {
+	sample := []byte(`["test1"]`)
+
+	val, err := ParseJSON(sample)
+	if err != nil {
+		t.Errorf("Failed to parse: %v", err)
+		return
+	}
+
+	val.ArrayAppend("test2")
+	val.ArrayAppend("test3")
+
+	if expected, actual := `["test1","test2","test3"]`, val.String(); expected != actual {
+		t.Errorf("expected %v, received: %v", expected, actual)
+	}
+}
+
 func TestLargeSample(t *testing.T) {
 	sample := []byte(`{
 		"test":{
@@ -700,8 +717,8 @@ func TestInvalid(t *testing.T) {
 	invalidJSONSamples := []string{
 		`{dfads"`,
 		``,
-		`""`,
-		`"hello"`,
+		// `""`,
+		// `"hello"`,
 		"{}\n{}",
 	}
 
