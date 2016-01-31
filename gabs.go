@@ -132,6 +132,33 @@ func (g *Container) S(hierarchy ...string) *Container {
 }
 
 /*
+Exists - Checks whether a path exists.
+*/
+func (g *Container) Exists(hierarchy ...string) bool {
+	var object interface{}
+
+	object = g.object
+	for target := 0; target < len(hierarchy); target++ {
+		if mmap, ok := object.(map[string]interface{}); ok {
+			object, ok = mmap[hierarchy[target]]
+			if !ok {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+	return true
+}
+
+/*
+ExistsP - Checks whether a dot notation path exists.
+*/
+func (g *Container) ExistsP(path string) bool {
+	return g.Exists(strings.Split(path, ".")...)
+}
+
+/*
 Index - Attempt to find and return an object with a JSON array by specifying the index of the
 target.
 */

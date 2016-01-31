@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -38,6 +39,38 @@ func TestBasic(t *testing.T) {
 
 	if result := val.Bytes(); string(result) != string(sample) {
 		t.Errorf("Wrong []byte conversion: %s != %s", result, sample)
+	}
+}
+
+func TestExists(t *testing.T) {
+	sample := []byte(`{"test":{"value":10},"test2":20}`)
+
+	val, err := ParseJSON(sample)
+	if err != nil {
+		t.Errorf("Failed to parse: %v", err)
+		return
+	}
+
+	paths := []struct {
+		Path   []string
+		Exists bool
+	}{
+		{[]string{"one", "two", "three"}, false},
+		{[]string{"test"}, true},
+		{[]string{"test", "value"}, true},
+		{[]string{"test2"}, true},
+		{[]string{"test2", "value"}, false},
+		{[]string{"test", "value2"}, false},
+		{[]string{"test", "VALUE"}, false},
+	}
+
+	for _, p := range paths {
+		if exp, actual := p.Exists, val.Exists(p.Path...); exp != actual {
+			t.Errorf("Wrong result from Exists: %v != %v, for path: %v", exp, actual, p.Path)
+		}
+		if exp, actual := p.Exists, val.ExistsP(strings.Join(p.Path, ".")); exp != actual {
+			t.Errorf("Wrong result from ExistsP: %v != %v, for path: %v", exp, actual, p.Path)
+		}
 	}
 }
 

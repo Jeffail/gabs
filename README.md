@@ -43,6 +43,15 @@ value, ok = jsonParsed.Search("outter", "inner", "value1").Data().(float64)
 value, ok = jsonParsed.Path("does.not.exist").Data().(float64)
 // value == 0.0, ok == false
 
+exists := jsonParsed.Exists("outter", "inner", "value1")
+// exists == true
+
+exists := jsonParsed.Exists("does", "not", "exist")
+// exists == false
+
+exists := jsonParsed.ExistsP("does.not.exist")
+// exists == false
+
 ...
 ```
 
