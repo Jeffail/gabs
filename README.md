@@ -7,7 +7,7 @@ https://godoc.org/github.com/Jeffail/gabs
 ##How to install:
 
 ```bash
-go get github.com/jeffail/gabs
+go get github.com/Jeffail/gabs
 ```
 
 ##How to use
@@ -17,7 +17,7 @@ go get github.com/jeffail/gabs
 ```go
 ...
 
-import "github.com/jeffail/gabs"
+import "github.com/Jeffail/gabs"
 
 jsonParsed, err := gabs.ParseJSON([]byte(`{
 	"outter":{
