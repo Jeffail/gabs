@@ -85,64 +85,60 @@ func TestBasicWithBuffer(t *testing.T) {
 }
 
 func TestFindArray(t *testing.T) {
-	sample := []byte(`{"test":{"array":[{"value":1}, {"value":2}, {"value":3}]}}`)
-
-	val, err := ParseJSON(sample)
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-		return
-	}
-
-	target := val.Path("test.array.value")
-	expected := "[1,2,3]"
-	result := target.String()
-
-	if expected != result {
-		t.Errorf("Expected %v, received %v", expected, result)
-	}
-}
-
-func TestFindArray2(t *testing.T) {
-	sample := []byte(`{
-		"test":{
-			"array":[
-				{
-					"values":[
-						{"more":1},
-						{"more":2},
-						{"more":3}
-					]
-				},
-				{
-					"values":[
-						{"more":4},
-						{"more":5},
-						{"more":6}
-					]
-				},
-				{
-					"values":[
-						{"more":7},
-						{"more":8},
-						{"more":9}
+	for i, this := range []struct {
+		input  string
+		target string
+		expect string
+	}{
+		{
+			`{"test":{"array":[{"value":1}, {"value":2}, {"value":3}]}}`,
+			"test.array.value",
+			"[1,2,3]",
+		},
+		{
+			`{
+			"test":{
+				"array":[
+						{
+							"values":[
+								{"more":1},
+								{"more":2},
+								{"more":3}
+							]
+						},
+						{
+							"values":[
+								{"more":4},
+								{"more":5},
+								{"more":6}
+							]
+						},
+						{
+							"values":[
+								{"more":7},
+								{"more":8},
+								{"more":9}
+							]
+						}
 					]
 				}
-			]
+			}`,
+			"test.array.values.more",
+			"[[1,2,3],[4,5,6],[7,8,9]]",
+		},
+	} {
+		val, err := ParseJSON([]byte(this.input))
+		if err != nil {
+			t.Errorf("[%d] Failed to parse: %s", i, err)
+			return
 		}
-	}`)
 
-	val, err := ParseJSON(sample)
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-		return
-	}
+		target := val.Path(this.target)
+		result := target.String()
 
-	target := val.Path("test.array.values.more")
-	expected := "[[1,2,3],[4,5,6],[7,8,9]]"
-	result := target.String()
-
-	if expected != result {
-		t.Errorf("Expected %v, received %v", expected, result)
+		if this.expect != result {
+			t.Errorf("[%d] Expected %v, received %v", i, this.expect, result)
+		}
 	}
 }
 
