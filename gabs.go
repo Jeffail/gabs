@@ -478,27 +478,29 @@ func (g *Container) Bytes() []byte {
 }
 
 /*
+BytesIndent - Converts the contained object back to a JSON []byte blob formatted with prefix and indent.
+*/
+func (g *Container) BytesIndent(prefix string, indent string) []byte {
+	if g.object != nil {
+		if bytes, err := json.MarshalIndent(g.object, prefix, indent); err == nil {
+			return bytes
+		}
+	}
+	return []byte("{}")
+}
+
+/*
 String - Converts the contained object back to a JSON formatted string.
 */
 func (g *Container) String() string {
-	if g.object != nil {
-		if bytes, err := json.Marshal(g.object); err == nil {
-			return string(bytes)
-		}
-	}
-	return "{}"
+	return string(g.Bytes())
 }
 
 /*
 StringIndent - Converts the contained object back to a JSON formatted string with prefix and indent.
 */
 func (g *Container) StringIndent(prefix string, indent string) string {
-	if g.object != nil {
-		if bytes, err := json.MarshalIndent(g.object, prefix, indent); err == nil {
-			return string(bytes)
-		}
-	}
-	return "{}"
+	return string(g.BytesIndent(prefix, indent))
 }
 
 /*
