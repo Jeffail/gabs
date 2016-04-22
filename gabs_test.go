@@ -110,6 +110,16 @@ func TestBasicWithDecoder(t *testing.T) {
 	checkNumber("test.float", "6.66")
 }
 
+func TestFailureWithDecoder(t *testing.T) {
+	sample := []byte(`{"test":{" "invalidCrap":.66}}`)
+	dec := json.NewDecoder(bytes.NewReader(sample))
+
+	_, err := ParseJSONDecoder(dec)
+	if err == nil {
+		t.Fatal("Expected parsing error")
+	}
+}
+
 func TestFindArray(t *testing.T) {
 	for i, this := range []struct {
 		input  string
