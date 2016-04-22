@@ -84,6 +84,32 @@ func TestBasicWithBuffer(t *testing.T) {
 	}
 }
 
+func TestBasicWithDecoder(t *testing.T) {
+	sample := []byte(`{"test":{"int":10, "float":6.66}}`)
+	dec := json.NewDecoder(bytes.NewReader(sample))
+	dec.UseNumber()
+
+	val, err := ParseJSONDecoder(dec)
+	if err != nil {
+		t.Errorf("Failed to parse: %v", err)
+		return
+	}
+
+	checkNumber := func(path string, expectedVal json.Number) {
+		data := val.Path(path).Data()
+		asNumber, isNumber := data.(json.Number)
+		if !isNumber {
+			t.Error("Failed to parse using decoder UseNumber policy")
+		}
+		if expectedVal != asNumber {
+			t.Errorf("Expected[%s] but got [%s]", expectedVal, asNumber)
+		}
+	}
+
+	checkNumber("test.int", "10")
+	checkNumber("test.float", "6.66")
+}
+
 func TestFindArray(t *testing.T) {
 	for i, this := range []struct {
 		input  string

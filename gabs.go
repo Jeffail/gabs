@@ -531,6 +531,19 @@ func ParseJSON(sample []byte) (*Container, error) {
 }
 
 /*
+ParseJSONDecoder - Convert a json.Decoder into a representation of the parsed JSON.
+*/
+func ParseJSONDecoder(decoder *json.Decoder) (*Container, error) {
+	var gabs Container
+
+	if err := decoder.Decode(&gabs.object); err != nil {
+		return nil, err
+	}
+
+	return &gabs, nil
+}
+
+/*
 ParseJSONFile - Read a file and convert into a representation of the parsed JSON.
 */
 func ParseJSONFile(path string) (*Container, error) {
