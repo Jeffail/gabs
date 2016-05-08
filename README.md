@@ -264,3 +264,21 @@ jsonOutput := jsonParsedObj.Search("outter").String()
 
 ...
 ```
+
+### Parsing Numbers
+
+Gabs uses the `json` package under the bonnet, which by default will parse all number values into `float64`. If you need to parse `Int` values then you should use a `json.Decoder` (https://golang.org/pkg/encoding/json/#Decoder):
+
+```go
+sample := []byte(`{"test":{"int":10, "float":6.66}}`)
+dec := json.NewDecoder(bytes.NewReader(sample))
+dec.UseNumber()
+
+val, err := gabs.ParseJSONDecoder(dec)
+if err != nil {
+    t.Errorf("Failed to parse: %v", err)
+    return
+}
+
+intValue, err := val.Path("test.int").Data().(json.Number).Int64()
+```
