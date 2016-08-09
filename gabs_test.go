@@ -74,6 +74,63 @@ func TestExists(t *testing.T) {
 	}
 }
 
+func TestExistsWithArrays(t *testing.T) {
+	sample := []byte(`{"foo":{"bar":{"baz":[10, 2, 3]}}}`)
+
+	val, err := ParseJSON(sample)
+	if err != nil {
+		t.Errorf("Failed to parse: %v", err)
+		return
+	}
+
+	if exp, actual := true, val.Exists("foo", "bar", "baz"); exp != actual {
+		t.Errorf("Wrong result from array based Exists: %v != %v", exp, actual)
+	}
+
+	sample = []byte(`{"foo":{"bar":[{"baz":10},{"baz":2},{"baz":3}]}}`)
+
+	if val, err = ParseJSON(sample); err != nil {
+		t.Errorf("Failed to parse: %v", err)
+		return
+	}
+
+	if exp, actual := true, val.Exists("foo", "bar", "baz"); exp != actual {
+		t.Errorf("Wrong result from array based Exists: %v != %v", exp, actual)
+	}
+	if exp, actual := false, val.Exists("foo", "bar", "baz_NOPE"); exp != actual {
+		t.Errorf("Wrong result from array based Exists: %v != %v", exp, actual)
+	}
+
+	sample = []byte(`{"foo":[{"bar":{"baz":10}},{"bar":{"baz":2}},{"bar":{"baz":3}}]}`)
+
+	if val, err = ParseJSON(sample); err != nil {
+		t.Errorf("Failed to parse: %v", err)
+		return
+	}
+
+	if exp, actual := true, val.Exists("foo", "bar", "baz"); exp != actual {
+		t.Errorf("Wrong result from array based Exists: %v != %v", exp, actual)
+	}
+	if exp, actual := false, val.Exists("foo", "bar", "baz_NOPE"); exp != actual {
+		t.Errorf("Wrong result from array based Exists: %v != %v", exp, actual)
+	}
+
+	sample =
+		[]byte(`[{"foo":{"bar":{"baz":10}}},{"foo":{"bar":{"baz":2}}},{"foo":{"bar":{"baz":3}}}]`)
+
+	if val, err = ParseJSON(sample); err != nil {
+		t.Errorf("Failed to parse: %v", err)
+		return
+	}
+
+	if exp, actual := true, val.Exists("foo", "bar", "baz"); exp != actual {
+		t.Errorf("Wrong result from array based Exists: %v != %v", exp, actual)
+	}
+	if exp, actual := false, val.Exists("foo", "bar", "baz_NOPE"); exp != actual {
+		t.Errorf("Wrong result from array based Exists: %v != %v", exp, actual)
+	}
+}
+
 func TestBasicWithBuffer(t *testing.T) {
 	sample := bytes.NewReader([]byte(`{"test":{"value":10},"test2":20}`))
 
