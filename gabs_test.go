@@ -361,7 +361,7 @@ func TestExamples2(t *testing.T) {
 func TestExamples3(t *testing.T) {
 	jsonObj := New()
 
-	jsonObj.Array("foo", "array")
+	jsonObj.ArrayP("foo.array")
 
 	jsonObj.ArrayAppend(10, "foo", "array")
 	jsonObj.ArrayAppend(20, "foo", "array")
@@ -621,7 +621,7 @@ func TestArrays(t *testing.T) {
 	}
 
 	for i := 0; i < 3; i++ {
-		if err := json2.RemoveElement("places", 0); err != nil {
+		if err := json2.ArrayRemove(0, "places"); err != nil {
 			t.Errorf("Error removing element: %v", err)
 		}
 	}
@@ -665,50 +665,53 @@ func TestArrays(t *testing.T) {
 func TestArraysTwo(t *testing.T) {
 	json1 := New()
 
-	test1, _ := json1.ArrayOfSize(4, "test1")
-
-	if _, err := test1.ArrayOfSizeI(2, 0); err != nil {
-		t.Error(err)
-	}
-	if _, err := test1.ArrayOfSizeI(2, 1); err != nil {
-		t.Error(err)
-	}
-	if _, err := test1.ArrayOfSizeI(2, 2); err != nil {
-		t.Error(err)
-	}
-	if _, err := test1.ArrayOfSizeI(2, 3); err != nil {
+	test1, err := json1.ArrayOfSize(4, "test1")
+	if err != nil {
 		t.Error(err)
 	}
 
-	if _, err := test1.ArrayOfSizeI(2, 4); err != ErrOutOfBounds {
+	if _, err = test1.ArrayOfSizeI(2, 0); err != nil {
+		t.Error(err)
+	}
+	if _, err = test1.ArrayOfSizeI(2, 1); err != nil {
+		t.Error(err)
+	}
+	if _, err = test1.ArrayOfSizeI(2, 2); err != nil {
+		t.Error(err)
+	}
+	if _, err = test1.ArrayOfSizeI(2, 3); err != nil {
+		t.Error(err)
+	}
+
+	if _, err = test1.ArrayOfSizeI(2, 4); err != ErrOutOfBounds {
 		t.Errorf("Index should have been out of bounds")
 	}
 
-	if _, err := json1.S("test1").Index(0).SetIndex(10, 0); err != nil {
+	if _, err = json1.S("test1").Index(0).SetIndex(10, 0); err != nil {
 		t.Error(err)
 	}
-	if _, err := json1.S("test1").Index(0).SetIndex(11, 1); err != nil {
-		t.Error(err)
-	}
-
-	if _, err := json1.S("test1").Index(1).SetIndex(12, 0); err != nil {
-		t.Error(err)
-	}
-	if _, err := json1.S("test1").Index(1).SetIndex(13, 1); err != nil {
+	if _, err = json1.S("test1").Index(0).SetIndex(11, 1); err != nil {
 		t.Error(err)
 	}
 
-	if _, err := json1.S("test1").Index(2).SetIndex(14, 0); err != nil {
+	if _, err = json1.S("test1").Index(1).SetIndex(12, 0); err != nil {
 		t.Error(err)
 	}
-	if _, err := json1.S("test1").Index(2).SetIndex(15, 1); err != nil {
+	if _, err = json1.S("test1").Index(1).SetIndex(13, 1); err != nil {
 		t.Error(err)
 	}
 
-	if _, err := json1.S("test1").Index(3).SetIndex(16, 0); err != nil {
+	if _, err = json1.S("test1").Index(2).SetIndex(14, 0); err != nil {
 		t.Error(err)
 	}
-	if _, err := json1.S("test1").Index(3).SetIndex(17, 1); err != nil {
+	if _, err = json1.S("test1").Index(2).SetIndex(15, 1); err != nil {
+		t.Error(err)
+	}
+
+	if _, err = json1.S("test1").Index(3).SetIndex(16, 0); err != nil {
+		t.Error(err)
+	}
+	if _, err = json1.S("test1").Index(3).SetIndex(17, 1); err != nil {
 		t.Error(err)
 	}
 
@@ -741,6 +744,20 @@ func TestArraysTwo(t *testing.T) {
 	}
 }
 
+func TestArraysThree(t *testing.T) {
+	json1 := New()
+
+	test, err := json1.ArrayOfSizeP(1, "test1.test2")
+	if err != nil {
+		t.Error(err)
+	}
+
+	test.SetIndex(10, 0)
+	if val := json1.S("test1", "test2").Index(0).Data().(int); val != 10 {
+		t.Error(err)
+	}
+}
+
 func TestArraysRoot(t *testing.T) {
 	sample := []byte(`["test1"]`)
 
@@ -752,8 +769,13 @@ func TestArraysRoot(t *testing.T) {
 
 	val.ArrayAppend("test2")
 	val.ArrayAppend("test3")
+	if obj, err := val.ObjectI(2); err != nil {
+		t.Error(err)
+	} else {
+		obj.Set("bar", "foo")
+	}
 
-	if expected, actual := `["test1","test2","test3"]`, val.String(); expected != actual {
+	if expected, actual := `["test1","test2",{"foo":"bar"}]`, val.String(); expected != actual {
 		t.Errorf("expected %v, received: %v", expected, actual)
 	}
 }
@@ -867,7 +889,7 @@ func TestInvalid(t *testing.T) {
 
 func TestCreation(t *testing.T) {
 	json, _ := ParseJSON([]byte(`{}`))
-	inner, err := json.Object("test", "inner")
+	inner, err := json.ObjectP("test.inner")
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -989,5 +1011,46 @@ func BenchmarkDynamic(b *testing.B) {
 		if val := SOSI.S("stringType").Data().(string); val != expected {
 			b.Errorf("Wrong value of SecondOutter.SecondInner.StringType: %v\n", val)
 		}
+	}
+}
+
+func TestNoTypeChildren(t *testing.T) {
+	jsonObj, err := ParseJSON([]byte(`{"not_obj_or_array":1}`))
+	if err != nil {
+		t.Error(err)
+	}
+	exp := ErrNotObjOrArray
+	if _, act := jsonObj.S("not_obj_or_array").Children(); act != exp {
+		t.Errorf("Unexpected value returned: %v != %v", exp, act)
+	}
+	exp = ErrNotObj
+	if _, act := jsonObj.S("not_obj_or_array").ChildrenMap(); act != exp {
+		t.Errorf("Unexpected value returned: %v != %v", exp, act)
+	}
+}
+
+func TestBadIndexes(t *testing.T) {
+	jsonObj, err := ParseJSON([]byte(`{"array":[1,2,3]}`))
+	if err != nil {
+		t.Error(err)
+	}
+	if act := jsonObj.Index(0).Data(); nil != act {
+		t.Errorf("Unexpected value returned: %v != %v", nil, act)
+	}
+	if act := jsonObj.S("array").Index(4).Data(); nil != act {
+		t.Errorf("Unexpected value returned: %v != %v", nil, act)
+	}
+}
+
+func TestNilSet(t *testing.T) {
+	obj := Container{nil}
+	if _, err := obj.Set("bar", "foo"); err != nil {
+		t.Error(err)
+	}
+	if _, err := obj.Set("new", "foo", "bar"); err != ErrPathCollision {
+		t.Errorf("Expected ErrPathCollision: %v, %s", err, obj.Data())
+	}
+	if _, err := obj.SetIndex("new", 0); err != ErrNotArray {
+		t.Errorf("Expected ErrNotArray: %v, %s", err, obj.Data())
 	}
 }
