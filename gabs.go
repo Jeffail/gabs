@@ -96,7 +96,7 @@ func (g *Container) Search(hierarchy ...string) *Container {
 	for target := 0; target < len(hierarchy); target++ {
 		if mmap, ok := object.(map[string]interface{}); ok {
 			object, ok = mmap[hierarchy[target]]
-			if ok == false {
+			if !ok {
 				return nil
 			}
 		} else if marray, ok := object.([]interface{}); ok {
