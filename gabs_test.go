@@ -43,7 +43,7 @@ func TestBasic(t *testing.T) {
 }
 
 func TestExists(t *testing.T) {
-	sample := []byte(`{"test":{"value":10},"test2":20}`)
+	sample := []byte(`{"test":{"value":10,"nullvalue":null},"test2":20,"testnull":null}`)
 
 	val, err := ParseJSON(sample)
 	if err != nil {
@@ -58,7 +58,9 @@ func TestExists(t *testing.T) {
 		{[]string{"one", "two", "three"}, false},
 		{[]string{"test"}, true},
 		{[]string{"test", "value"}, true},
+		{[]string{"test", "nullvalue"}, true},
 		{[]string{"test2"}, true},
+		{[]string{"testnull"}, true},
 		{[]string{"test2", "value"}, false},
 		{[]string{"test", "value2"}, false},
 		{[]string{"test", "VALUE"}, false},
