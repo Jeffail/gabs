@@ -69,7 +69,6 @@ var (
 // json. Use this container to move context.
 type Container struct {
 	object interface{}
-	isHtmlEscape bool
 }
 
 // Data - Return the contained data as an interface{}.
@@ -78,11 +77,6 @@ func (g *Container) Data() interface{} {
 		return nil
 	}
 	return g.object
-}
-
-// SetHtmlEscape - Set HTML escape flag
-func (g *Container) SetHtmlEscape(isHtmlEscape bool) {
-	g.isHtmlEscape = isHtmlEscape
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -109,7 +103,7 @@ func (g *Container) Search(hierarchy ...string) *Container {
 		} else if marray, ok := object.([]interface{}); ok {
 			tmpArray := []interface{}{}
 			for _, val := range marray {
-				tmpGabs := &Container{val, g.isHtmlEscape}
+				tmpGabs := &Container{val}
 				res := tmpGabs.Search(hierarchy[target:]...)
 				if res != nil {
 					tmpArray = append(tmpArray, res.Data())
@@ -118,12 +112,12 @@ func (g *Container) Search(hierarchy ...string) *Container {
 			if len(tmpArray) == 0 {
 				return nil
 			}
-			return &Container{tmpArray, g.isHtmlEscape}
+			return &Container{tmpArray}
 		} else {
 			return nil
 		}
 	}
-	return &Container{object, g.isHtmlEscape}
+	return &Container{object}
 }
 
 // S - Shorthand method, does the same thing as Search.
@@ -145,11 +139,11 @@ func (g *Container) ExistsP(path string) bool {
 func (g *Container) Index(index int) *Container {
 	if array, ok := g.Data().([]interface{}); ok {
 		if index >= len(array) {
-			return &Container{nil, g.isHtmlEscape}
+			return &Container{nil}
 		}
-		return &Container{array[index], g.isHtmlEscape}
+		return &Container{array[index]}
 	}
-	return &Container{nil, g.isHtmlEscape}
+	return &Container{nil}
 }
 
 // Children - Return a slice of all the children of the array. This also works for objects, however,
@@ -159,14 +153,14 @@ func (g *Container) Children() ([]*Container, error) {
 	if array, ok := g.Data().([]interface{}); ok {
 		children := make([]*Container, len(array))
 		for i := 0; i < len(array); i++ {
-			children[i] = &Container{array[i], g.isHtmlEscape}
+			children[i] = &Container{array[i]}
 		}
 		return children, nil
 	}
 	if mmap, ok := g.Data().(map[string]interface{}); ok {
 		children := []*Container{}
 		for _, obj := range mmap {
-			children = append(children, &Container{obj, g.isHtmlEscape})
+			children = append(children, &Container{obj})
 		}
 		return children, nil
 	}
@@ -178,7 +172,7 @@ func (g *Container) ChildrenMap() (map[string]*Container, error) {
 	if mmap, ok := g.Data().(map[string]interface{}); ok {
 		children := map[string]*Container{}
 		for name, obj := range mmap {
-			children[name] = &Container{obj, g.isHtmlEscape}
+			children[name] = &Container{obj}
 		}
 		return children, nil
 	}
@@ -209,10 +203,10 @@ func (g *Container) Set(value interface{}, path ...string) (*Container, error) {
 			}
 			object = mmap[path[target]]
 		} else {
-			return &Container{nil, g.isHtmlEscape}, ErrPathCollision
+			return &Container{nil}, ErrPathCollision
 		}
 	}
-	return &Container{object, g.isHtmlEscape}, nil
+	return &Container{object}, nil
 }
 
 // SetP - Does the same as Set, but using a dot notation JSON path.
@@ -224,12 +218,12 @@ func (g *Container) SetP(value interface{}, path string) (*Container, error) {
 func (g *Container) SetIndex(value interface{}, index int) (*Container, error) {
 	if array, ok := g.Data().([]interface{}); ok {
 		if index >= len(array) {
-			return &Container{nil, g.isHtmlEscape}, ErrOutOfBounds
+			return &Container{nil}, ErrOutOfBounds
 		}
 		array[index] = value
-		return &Container{array[index], g.isHtmlEscape}, nil
+		return &Container{array[index]}, nil
 	}
-	return &Container{nil, g.isHtmlEscape}, ErrNotArray
+	return &Container{nil}, ErrNotArray
 }
 
 // Object - Create a new JSON object at a path. Returns an error if the path contains a collision
@@ -364,16 +358,16 @@ func (g *Container) ArrayRemoveP(index int, path string) error {
 // ArrayElement - Access an element from a JSON array.
 func (g *Container) ArrayElement(index int, path ...string) (*Container, error) {
 	if index < 0 {
-		return &Container{nil, g.isHtmlEscape}, ErrOutOfBounds
+		return &Container{nil}, ErrOutOfBounds
 	}
 	array, ok := g.Search(path...).Data().([]interface{})
 	if !ok {
-		return &Container{nil, g.isHtmlEscape}, ErrNotArray
+		return &Container{nil}, ErrNotArray
 	}
 	if index < len(array) {
-		return &Container{array[index], g.isHtmlEscape}, nil
+		return &Container{array[index]}, nil
 	}
-	return &Container{nil, g.isHtmlEscape}, ErrOutOfBounds
+	return &Container{nil}, ErrOutOfBounds
 }
 
 // ArrayElementP - Access an element from a JSON array using a dot notation JSON path.
@@ -399,18 +393,8 @@ func (g *Container) ArrayCountP(path string) (int, error) {
 // Bytes - Converts the contained object back to a JSON []byte blob.
 func (g *Container) Bytes() []byte {
 	if g.Data() != nil {
-		w := new(bytes.Buffer)
-		enc := json.NewEncoder(w)
-		enc.SetEscapeHTML(g.isHtmlEscape)
-		if err := enc.Encode(g.object); err == nil {
-			bytes := w.Bytes()
-			bytesLength := len(bytes)
-
-			if bytes[bytesLength - 1] == '\n' {
-				return bytes[:bytesLength - 1]
-			} else {
-				return bytes
-			}
+		if bytes, err := json.Marshal(g.object); err == nil {
+			return bytes
 		}
 	}
 	return []byte("{}")
@@ -419,19 +403,8 @@ func (g *Container) Bytes() []byte {
 // BytesIndent - Converts the contained object to a JSON []byte blob formatted with prefix, indent.
 func (g *Container) BytesIndent(prefix string, indent string) []byte {
 	if g.object != nil {
-		w := new(bytes.Buffer)
-		enc := json.NewEncoder(w)
-		enc.SetEscapeHTML(g.isHtmlEscape)
-		enc.SetIndent(prefix, indent)
-		if err := enc.Encode(g.object); err == nil {
-			bytes := w.Bytes()
-			bytesLength := len(bytes)
-
-			if bytes[bytesLength - 1] == '\n' {
-				return bytes[:bytesLength - 1]
-			} else {
-				return bytes
-			}
+		if bytes, err := json.MarshalIndent(g.object, prefix, indent); err == nil {
+			return bytes
 		}
 	}
 	return []byte("{}")
@@ -447,20 +420,57 @@ func (g *Container) StringIndent(prefix string, indent string) string {
 	return string(g.BytesIndent(prefix, indent))
 }
 
+// EncodeOpt is a functional option for the EncodeJSON method.
+type EncodeOpt func(e *json.Encoder)
+
+// EncodeOptHTMLEscape sets the encoder to escape the JSON for html.
+func EncodeOptHTMLEscape(doEscape bool) EncodeOpt {
+	return func(e *json.Encoder) {
+		e.SetEscapeHTML(doEscape)
+	}
+}
+
+// EncodeOptIndent sets the encoder to indent the JSON output.
+func EncodeOptIndent(prefix string, indent string) EncodeOpt {
+	return func(e *json.Encoder) {
+		e.SetIndent(prefix, indent)
+	}
+}
+
+// EncodeJSON - Encodes the contained object back to a JSON formatted []byte
+// using a variant list of modifier functions for the encoder being used.
+// Functions for modifying the output are prefixed with EncodeOpt, e.g.
+// EncodeOptHTMLEscape.
+func (g *Container) EncodeJSON(encodeOpts ...EncodeOpt) []byte {
+	var b bytes.Buffer
+	encoder := json.NewEncoder(&b)
+	encoder.SetEscapeHTML(false) // Do not escape by default.
+	for _, opt := range encodeOpts {
+		opt(encoder)
+	}
+	if err := encoder.Encode(g.object); err != nil {
+		return []byte("{}")
+	}
+	result := b.Bytes()
+	if len(result) > 0 {
+		result = result[:len(result)-1]
+	}
+	return result
+}
+
 // New - Create a new gabs JSON object.
 func New() *Container {
-	return &Container{map[string]interface{}{}, true}
+	return &Container{map[string]interface{}{}}
 }
 
 // Consume - Gobble up an already converted JSON object, or a fresh map[string]interface{} object.
 func Consume(root interface{}) (*Container, error) {
-	return &Container{root, true}, nil
+	return &Container{root}, nil
 }
 
 // ParseJSON - Convert a string into a representation of the parsed JSON.
 func ParseJSON(sample []byte) (*Container, error) {
 	var gabs Container
-	gabs.isHtmlEscape = true
 
 	if err := json.Unmarshal(sample, &gabs.object); err != nil {
 		return nil, err
@@ -472,7 +482,6 @@ func ParseJSON(sample []byte) (*Container, error) {
 // ParseJSONDecoder - Convert a json.Decoder into a representation of the parsed JSON.
 func ParseJSONDecoder(decoder *json.Decoder) (*Container, error) {
 	var gabs Container
-	gabs.isHtmlEscape = true
 
 	if err := decoder.Decode(&gabs.object); err != nil {
 		return nil, err
@@ -502,8 +511,6 @@ func ParseJSONFile(path string) (*Container, error) {
 // ParseJSONBuffer - Read the contents of a buffer into a representation of the parsed JSON.
 func ParseJSONBuffer(buffer io.Reader) (*Container, error) {
 	var gabs Container
-	gabs.isHtmlEscape = true
-
 	jsonDecoder := json.NewDecoder(buffer)
 	if err := jsonDecoder.Decode(&gabs.object); err != nil {
 		return nil, err

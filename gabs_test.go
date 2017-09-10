@@ -1068,7 +1068,7 @@ func TestBadIndexes(t *testing.T) {
 }
 
 func TestNilSet(t *testing.T) {
-	obj := Container{nil, true}
+	obj := Container{nil}
 	if _, err := obj.Set("bar", "foo"); err != nil {
 		t.Error(err)
 	}
@@ -1094,7 +1094,7 @@ func TestLargeSampleWithHtmlEscape(t *testing.T) {
 	"test2": 20
 }`)
 
-	sampleWithHtmlEscape := []byte(`{
+	sampleWithHTMLEscape := []byte(`{
 	"test": {
 		"innerTest": {
 			"value": 10,
@@ -1113,13 +1113,15 @@ func TestLargeSampleWithHtmlEscape(t *testing.T) {
 		return
 	}
 
-	obj := Container{val.Data(), false}
-	if string(obj.BytesIndent("", "\t")) != string(sample) {
-		t.Errorf("Wrong conversion without html escaping: %s != %s", obj.BytesIndent("", "\t"), sample)
+	exp := string(sample)
+	res := string(val.EncodeJSON(EncodeOptIndent("", "\t")))
+	if exp != res {
+		t.Errorf("Wrong conversion without html escaping: %s != %s", res, exp)
 	}
 
-	objWithHtmlEscape := Container{val.Data(), true}
-	if string(objWithHtmlEscape.BytesIndent("", "\t")) != string(sampleWithHtmlEscape) {
-		t.Errorf("Wrong conversion with html escaping: %s != %s", objWithHtmlEscape.BytesIndent("", "\t"), sampleWithHtmlEscape)
+	exp = string(sampleWithHtmlEscape)
+	res = string(val.EncodeJSON(EncodeOptHTMLEscape(true), EncodeOptIndent("", "\t")))
+	if exp != res {
+		t.Errorf("Wrong conversion with html escaping: %s != %s", exp, res)
 	}
 }
