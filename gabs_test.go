@@ -1079,3 +1079,49 @@ func TestNilSet(t *testing.T) {
 		t.Errorf("Expected ErrNotArray: %v, %s", err, obj.Data())
 	}
 }
+
+func TestLargeSampleWithHtmlEscape(t *testing.T) {
+	sample := []byte(`{
+	"test": {
+		"innerTest": {
+			"value": 10,
+			"value2": "<title>Title</title>",
+			"value3": {
+				"moreValue": 45
+			}
+		}
+	},
+	"test2": 20
+}`)
+
+	sampleWithHTMLEscape := []byte(`{
+	"test": {
+		"innerTest": {
+			"value": 10,
+			"value2": "\u003ctitle\u003eTitle\u003c/title\u003e",
+			"value3": {
+				"moreValue": 45
+			}
+		}
+	},
+	"test2": 20
+}`)
+
+	val, err := ParseJSON(sample)
+	if err != nil {
+		t.Errorf("Failed to parse: %v", err)
+		return
+	}
+
+	exp := string(sample)
+	res := string(val.EncodeJSON(EncodeOptIndent("", "\t")))
+	if exp != res {
+		t.Errorf("Wrong conversion without html escaping: %s != %s", res, exp)
+	}
+
+	exp = string(sampleWithHtmlEscape)
+	res = string(val.EncodeJSON(EncodeOptHTMLEscape(true), EncodeOptIndent("", "\t")))
+	if exp != res {
+		t.Errorf("Wrong conversion with html escaping: %s != %s", exp, res)
+	}
+}
