@@ -1119,7 +1119,7 @@ func TestLargeSampleWithHtmlEscape(t *testing.T) {
 		t.Errorf("Wrong conversion without html escaping: %s != %s", res, exp)
 	}
 
-	exp = string(sampleWithHtmlEscape)
+	exp = string(sampleWithHTMLEscape)
 	res = string(val.EncodeJSON(EncodeOptHTMLEscape(true), EncodeOptIndent("", "\t")))
 	if exp != res {
 		t.Errorf("Wrong conversion with html escaping: %s != %s", exp, res)
