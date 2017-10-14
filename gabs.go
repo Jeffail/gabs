@@ -320,8 +320,9 @@ func (g *Container) Merge(toMerge *Container) error {
 				}
 			}
 			// path doesn't exist. So set the value
-			_, err := g.Set(value, key)
-			return err
+			if _, err := g.Set(value, key); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
