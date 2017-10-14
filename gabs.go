@@ -320,6 +320,10 @@ func (g *Container) Merge(toMerge *Container) error {
 					if err := recursiveFnc(nmmap, append(path, key)); err != nil {
 						return err
 					}
+				} else if reflect.TypeOf(g.Path(key).Data()).Kind() != reflect.Array {
+					if err := g.ArrayAppend(value, append(path, key)...); err != nil {
+						return err
+					}
 				} else if reflect.TypeOf(g.Path(key).Data()).Kind() != reflect.Map {
 					return errors.New("Can't merge: %v")
 				}

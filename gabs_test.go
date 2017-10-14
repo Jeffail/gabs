@@ -1241,3 +1241,25 @@ func TestMergeJsonWithComplexerInner(t *testing.T) {
 		t.Errorf("Something is missing: %v", jsonParsed1.String())
 	}
 }
+
+func TestMergeJsonWithArray(t *testing.T) {
+	jsonParsed1, err := ParseJSON([]byte(`{"array": ["one"]}`))
+	if err != nil {
+		t.Errorf("Failed to parse: %v", err)
+	}
+
+	jsonParsed2, err := ParseJSON([]byte(`{"array": ["two"]}`))
+	if err != nil {
+		t.Errorf("Failed to parse: %v", err)
+	}
+
+	err = jsonParsed1.Merge(jsonParsed2)
+	if err != nil {
+		t.Errorf("Failed to merge: %v", err)
+	}
+
+	count, _ := jsonParsed1.ArrayCount("array")
+	if count != 2 {
+		t.Errorf("Expected count of array are 2. Actually: %d", count)
+	}
+}
