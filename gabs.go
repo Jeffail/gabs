@@ -309,6 +309,20 @@ func (g *Container) DeleteP(path string) error {
 	return g.Delete(strings.Split(path, ".")...)
 }
 
+// Merge - Merges two gabs-containers
+func (g *Container) Merge(toMerge *Container) error {
+	if mmap, ok := toMerge.Data().(map[string]interface{}); ok {
+		for key, value := range mmap {
+			if !g.Exists(key) {
+				_, err := g.Set(value, key)
+				return err
+			}
+		}
+		return nil
+	}
+	return nil
+}
+
 //--------------------------------------------------------------------------------------------------
 
 /*
