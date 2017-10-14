@@ -26,3 +26,21 @@ func TestMergeSimpleJsons(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestMergeSimpleJsonsWithFailure(t *testing.T) {
+	jsonParsed1, err := gabs.ParseJSON([]byte(`{"value1": "one"}`))
+	if err != nil {
+		t.Errorf("Failed to parse: %v", err)
+	}
+
+	jsonParsed2, err := gabs.ParseJSON([]byte(`{"value1": "two"}`))
+	if err != nil {
+		t.Errorf("Failed to parse: %v", err)
+	}
+
+	err = jsonParsed1.Merge(jsonParsed2)
+	if err == nil {
+		t.Errorf("failure is expected!")
+	}
+
+}

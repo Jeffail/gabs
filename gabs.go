@@ -29,6 +29,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"reflect"
 	"strings"
 )
 
@@ -313,10 +314,14 @@ func (g *Container) DeleteP(path string) error {
 func (g *Container) Merge(toMerge *Container) error {
 	if mmap, ok := toMerge.Data().(map[string]interface{}); ok {
 		for key, value := range mmap {
-			if !g.Exists(key) {
-				_, err := g.Set(value, key)
-				return err
+			if g.Exists(key) {
+				if reflect.TypeOf(g.Path(key).Data()).Kind() != reflect.Map {
+					return errors.New("Can't merge: %v")
+				}
 			}
+			// path doesn't exist. So set the value
+			_, err := g.Set(value, key)
+			return err
 		}
 		return nil
 	}
