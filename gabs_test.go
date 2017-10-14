@@ -1263,3 +1263,62 @@ func TestMergeJsonWithArray(t *testing.T) {
 		t.Errorf("Expected count of array are 2. Actually: %d", count)
 	}
 }
+
+func TestMergeCases(t *testing.T) {
+	type testCase struct {
+		first    string
+		second   string
+		expected string
+	}
+
+	testCases := []testCase{
+		{
+			first:    `{"outter":["first"]}`,
+			second:   `{"outter":["second"]}`,
+			expected: `{"outter":["first","second"]}`,
+		},
+		{
+			first:    `{"outter":["first",{"inner":"second"}]}`,
+			second:   `{"outter":["third"]}`,
+			expected: `{"outter":["first",{"inner":"second"},"third"]}`,
+		},
+		{
+			first:    `{"outter":["first",{"inner":"second"}]}`,
+			second:   `{"outter":"third"}`,
+			expected: `{"outter":["first",{"inner":"second"},"third"]}`,
+		},
+		{
+			first:    `{"outter":"first"}`,
+			second:   `{"outter":"second"}`,
+			expected: `{"outter":["first","second"]}`,
+		},
+		{
+			first:    `{"outter":{"inner":"first"}}`,
+			second:   `{"outter":{"inner":"second"}}`,
+			expected: `{"outter":{"inner":["first","second"]}}`,
+		},
+	}
+
+	for _, test := range testCases {
+		var firstContainer, secondContainer *Container
+		var err error
+
+		firstContainer, err = ParseJSON([]byte(test.first))
+		if err != nil {
+			t.Errorf("Failed to parse '%v': %v", test.first, err)
+		}
+
+		secondContainer, err = ParseJSON([]byte(test.second))
+		if err != nil {
+			t.Errorf("Failed to parse '%v': %v", test.second, err)
+		}
+
+		if err = firstContainer.Merge(secondContainer); err != nil {
+			t.Errorf("Failed to merge: '%v': %v", test.first, err)
+		}
+
+		if exp, act := test.expected, firstContainer.String(); exp != act {
+			t.Errorf("Wrong result: %v != %v", act, exp)
+		}
+	}
+}
