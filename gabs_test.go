@@ -1142,8 +1142,8 @@ func TestMergeSimpleJsons(t *testing.T) {
 		t.Errorf("Failed to merge: %v", err)
 	}
 
-	if !jsonParsed1.Exists("value2") {
-		t.Fail()
+	if !jsonParsed1.Exists("value1") || !jsonParsed1.Exists("value2") {
+		t.Errorf("Something is missing: %v", jsonParsed1.String())
 	}
 }
 
@@ -1180,8 +1180,8 @@ func TestMergeSimpleJsonsWithMultipleValues(t *testing.T) {
 		t.Errorf("Failed to merge: %v", err)
 	}
 
-	if !jsonParsed1.Exists("value2") || !jsonParsed1.Exists("value3") {
-		t.Fail()
+	if !jsonParsed1.Exists("value1") || !jsonParsed1.Exists("value2") || !jsonParsed1.Exists("value3") {
+		t.Errorf("Something is missing: %v", jsonParsed1.String())
 	}
 }
 
@@ -1197,8 +1197,10 @@ func TestMergeJsonWithInner(t *testing.T) {
 	}
 
 	err = jsonParsed1.Merge(jsonParsed2)
-	if !jsonParsed1.Exists("outter", "value2") {
-		t.Errorf("outter.value2 is missing")
+	if err != nil {
+		t.Errorf("Failed to merge: %v", err)
+	} else if !jsonParsed1.Exists("outter", "value1") || !jsonParsed1.Exists("outter", "value2") {
+		t.Errorf("Something is missing: %v", jsonParsed1.String())
 	}
 }
 
@@ -1214,8 +1216,10 @@ func TestMergeJsonWithComplexInner(t *testing.T) {
 	}
 
 	err = jsonParsed1.Merge(jsonParsed2)
-	if !jsonParsed1.Exists("outter", "value2") || !jsonParsed1.Exists("outter", "inner", "value3") {
-		t.Errorf("outter.value2 is missing")
+	if err != nil {
+		t.Errorf("Failed to merge: %v", err)
+	} else if !jsonParsed1.Exists("outter", "value1") || !jsonParsed1.Exists("outter", "value2") || !jsonParsed1.Exists("outter", "inner", "value3") {
+		t.Errorf("Something is missing: %v", jsonParsed1.String())
 	}
 }
 
@@ -1231,7 +1235,9 @@ func TestMergeJsonWithComplexerInner(t *testing.T) {
 	}
 
 	err = jsonParsed1.Merge(jsonParsed2)
-	if !jsonParsed1.Exists("outter2", "value2") || !jsonParsed1.Exists("outter", "inner", "value3") {
-		t.Errorf("outter.value2 is missing")
+	if err != nil {
+		t.Errorf("Failed to merge: %v", err)
+	} else if !jsonParsed1.Exists("outter", "value1") || !jsonParsed1.Exists("outter2", "value2") || !jsonParsed1.Exists("outter", "inner", "value3") {
+		t.Errorf("Something is missing: %v", jsonParsed1.String())
 	}
 }

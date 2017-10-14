@@ -317,15 +317,17 @@ func (g *Container) Merge(toMerge *Container) error {
 		for key, value := range mmap {
 			if g.Exists(key) {
 				if nmmap, ok := value.(map[string]interface{}); ok {
-					recursiveFnc(nmmap, append(path, key))
-				}
-				if reflect.TypeOf(g.Path(key).Data()).Kind() != reflect.Map {
+					if err := recursiveFnc(nmmap, append(path, key)); err != nil {
+						return err
+					}
+				} else if reflect.TypeOf(g.Path(key).Data()).Kind() != reflect.Map {
 					return errors.New("Can't merge: %v")
 				}
-			}
-			// path doesn't exist. So set the value
-			if _, err := g.Set(value, key); err != nil {
-				return err
+			} else {
+				// path doesn't exist. So set the value
+				if _, err := g.Set(value, append(path, key)...); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
