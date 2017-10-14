@@ -1126,144 +1126,6 @@ func TestLargeSampleWithHtmlEscape(t *testing.T) {
 	}
 }
 
-func TestMergeSimpleJsons(t *testing.T) {
-	jsonParsed1, err := ParseJSON([]byte(`{"value1": "one"}`))
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-	}
-
-	jsonParsed2, err := ParseJSON([]byte(`{"value2": "two"}`))
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-	}
-
-	err = jsonParsed1.Merge(jsonParsed2)
-	if err != nil {
-		t.Errorf("Failed to merge: %v", err)
-	}
-
-	if !jsonParsed1.Exists("value1") || !jsonParsed1.Exists("value2") {
-		t.Errorf("Something is missing: %v", jsonParsed1.String())
-	}
-}
-
-func TestMergeSimpleJsonsWithFailure(t *testing.T) {
-	jsonParsed1, err := ParseJSON([]byte(`{"value1": "one"}`))
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-	}
-
-	jsonParsed2, err := ParseJSON([]byte(`{"value1": "two"}`))
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-	}
-
-	err = jsonParsed1.Merge(jsonParsed2)
-	if err == nil {
-		t.Errorf("failure is expected!")
-	}
-}
-
-func TestMergeSimpleJsonsWithMultipleValues(t *testing.T) {
-	jsonParsed1, err := ParseJSON([]byte(`{"value1": "one"}`))
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-	}
-
-	jsonParsed2, err := ParseJSON([]byte(`{"value2": "two", "value3": "three"}`))
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-	}
-
-	err = jsonParsed1.Merge(jsonParsed2)
-	if err != nil {
-		t.Errorf("Failed to merge: %v", err)
-	}
-
-	if !jsonParsed1.Exists("value1") || !jsonParsed1.Exists("value2") || !jsonParsed1.Exists("value3") {
-		t.Errorf("Something is missing: %v", jsonParsed1.String())
-	}
-}
-
-func TestMergeJsonWithInner(t *testing.T) {
-	jsonParsed1, err := ParseJSON([]byte(`{"outter": {"value1": "one"}}`))
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-	}
-
-	jsonParsed2, err := ParseJSON([]byte(`{"outter": {"value2": "two"}}`))
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-	}
-
-	err = jsonParsed1.Merge(jsonParsed2)
-	if err != nil {
-		t.Errorf("Failed to merge: %v", err)
-	} else if !jsonParsed1.Exists("outter", "value1") || !jsonParsed1.Exists("outter", "value2") {
-		t.Errorf("Something is missing: %v", jsonParsed1.String())
-	}
-}
-
-func TestMergeJsonWithComplexInner(t *testing.T) {
-	jsonParsed1, err := ParseJSON([]byte(`{"outter": {"value1": "one"}}`))
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-	}
-
-	jsonParsed2, err := ParseJSON([]byte(`{"outter": {"value2": "two", "inner": {"value3": "threre"}}}`))
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-	}
-
-	err = jsonParsed1.Merge(jsonParsed2)
-	if err != nil {
-		t.Errorf("Failed to merge: %v", err)
-	} else if !jsonParsed1.Exists("outter", "value1") || !jsonParsed1.Exists("outter", "value2") || !jsonParsed1.Exists("outter", "inner", "value3") {
-		t.Errorf("Something is missing: %v", jsonParsed1.String())
-	}
-}
-
-func TestMergeJsonWithComplexerInner(t *testing.T) {
-	jsonParsed1, err := ParseJSON([]byte(`{"outter": {"value1": "one"}}`))
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-	}
-
-	jsonParsed2, err := ParseJSON([]byte(`{"outter": {"inner": {"value3": "threre"}}, "outter2": {"value2": "two"}}`))
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-	}
-
-	err = jsonParsed1.Merge(jsonParsed2)
-	if err != nil {
-		t.Errorf("Failed to merge: %v", err)
-	} else if !jsonParsed1.Exists("outter", "value1") || !jsonParsed1.Exists("outter2", "value2") || !jsonParsed1.Exists("outter", "inner", "value3") {
-		t.Errorf("Something is missing: %v", jsonParsed1.String())
-	}
-}
-
-func TestMergeJsonWithArray(t *testing.T) {
-	jsonParsed1, err := ParseJSON([]byte(`{"array": ["one"]}`))
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-	}
-
-	jsonParsed2, err := ParseJSON([]byte(`{"array": ["two"]}`))
-	if err != nil {
-		t.Errorf("Failed to parse: %v", err)
-	}
-
-	err = jsonParsed1.Merge(jsonParsed2)
-	if err != nil {
-		t.Errorf("Failed to merge: %v", err)
-	}
-
-	count, _ := jsonParsed1.ArrayCount("array")
-	if count != 2 {
-		t.Errorf("Expected count of array are 2. Actually: %d", count)
-	}
-}
-
 func TestMergeCases(t *testing.T) {
 	type testCase struct {
 		first    string
@@ -1272,6 +1134,11 @@ func TestMergeCases(t *testing.T) {
 	}
 
 	testCases := []testCase{
+		{
+			first:    `{"outter":{"value1":"one"}}`,
+			second:   `{"outter":{"inner":{"value3": "threre"}},"outter2":{"value2": "two"}}`,
+			expected: `{"outter":{"inner":{"value3":"threre"},"value1":"one"},"outter2":{"value2":"two"}}`,
+		},
 		{
 			first:    `{"outter":["first"]}`,
 			second:   `{"outter":["second"]}`,
@@ -1299,26 +1166,26 @@ func TestMergeCases(t *testing.T) {
 		},
 	}
 
-	for _, test := range testCases {
+	for i, test := range testCases {
 		var firstContainer, secondContainer *Container
 		var err error
 
 		firstContainer, err = ParseJSON([]byte(test.first))
 		if err != nil {
-			t.Errorf("Failed to parse '%v': %v", test.first, err)
+			t.Errorf("[%d] Failed to parse '%v': %v", i, test.first, err)
 		}
 
 		secondContainer, err = ParseJSON([]byte(test.second))
 		if err != nil {
-			t.Errorf("Failed to parse '%v': %v", test.second, err)
+			t.Errorf("[%d] Failed to parse '%v': %v", i, test.second, err)
 		}
 
 		if err = firstContainer.Merge(secondContainer); err != nil {
-			t.Errorf("Failed to merge: '%v': %v", test.first, err)
+			t.Errorf("[%d] Failed to merge: '%v': %v", i, test.first, err)
 		}
 
 		if exp, act := test.expected, firstContainer.String(); exp != act {
-			t.Errorf("Wrong result: %v != %v", act, exp)
+			t.Errorf("[%d] Wrong result: %v != %v", i, act, exp)
 		}
 	}
 }

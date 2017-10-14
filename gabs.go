@@ -315,21 +315,28 @@ func (g *Container) Merge(toMerge *Container) error {
 	var recursiveFnc func(map[string]interface{}, []string) error
 	recursiveFnc = func(mmap map[string]interface{}, path []string) error {
 		for key, value := range mmap {
-			if g.Exists(key) {
+			newPath := append(path, key)
+			if g.Exists(newPath...) {
 				if nmmap, ok := value.(map[string]interface{}); ok {
-					if err := recursiveFnc(nmmap, append(path, key)); err != nil {
+					if err := recursiveFnc(nmmap, newPath); err != nil {
 						return err
 					}
-				} else if reflect.TypeOf(g.Path(key).Data()).Kind() != reflect.Array {
-					if err := g.ArrayAppend(value, append(path, key)...); err != nil {
+				} else if reflect.TypeOf(g.Path(strings.Join(newPath, ".")).Data()).Kind() != reflect.Array {
+					if slice, ok := value.([]interface{}); ok {
+						for _, valueOfSlice := range slice {
+							if err := g.ArrayAppend(valueOfSlice, newPath...); err != nil {
+								return err
+							}
+						}
+					} else if err := g.ArrayAppend(value, newPath...); err != nil {
 						return err
 					}
-				} else if reflect.TypeOf(g.Path(key).Data()).Kind() != reflect.Map {
+				} else if reflect.TypeOf(g.Path(strings.Join(newPath, ".")).Data()).Kind() != reflect.Map {
 					return errors.New("Can't merge: %v")
 				}
 			} else {
 				// path doesn't exist. So set the value
-				if _, err := g.Set(value, append(path, key)...); err != nil {
+				if _, err := g.Set(value, newPath...); err != nil {
 					return err
 				}
 			}
@@ -351,12 +358,17 @@ complicated since you can just cast to []interface{}, modify and then reassign w
 
 // ArrayAppend - Append a value onto a JSON array.
 func (g *Container) ArrayAppend(value interface{}, path ...string) error {
-	array, ok := g.Search(path...).Data().([]interface{})
-	if !ok {
-		return ErrNotArray
+	if array, ok := g.Search(path...).Data().([]interface{}); ok {
+		array = append(array, value)
+		_, err := g.Set(array, path...)
+		return err
 	}
-	array = append(array, value)
-	_, err := g.Set(array, path...)
+
+	newArray := []interface{}{}
+	newArray = append(newArray, g.Path(strings.Join(path, ".")).Data())
+	newArray = append(newArray, value)
+
+	_, err := g.Set(newArray, path...)
 	return err
 }
 

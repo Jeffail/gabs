@@ -280,7 +280,7 @@ Respect also arrays:
 ```go
 jsonParsed1, _ := ParseJSON([]byte(`{"array": ["one"]}`))
 jsonParsed2, _ := ParseJSON([]byte(`{"array": ["two"]}`))
-// Becomes `{"array":["one",["two"]]}`
+// Becomes `{"array":["one", "two"]}`
 
 ```
 
