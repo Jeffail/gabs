@@ -29,7 +29,6 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
-	"reflect"
 	"strings"
 )
 
@@ -317,22 +316,34 @@ func (g *Container) Merge(toMerge *Container) error {
 		for key, value := range mmap {
 			newPath := append(path, key)
 			if g.Exists(newPath...) {
-				if nmmap, ok := value.(map[string]interface{}); ok {
-					if err := recursiveFnc(nmmap, newPath); err != nil {
-						return err
-					}
-				} else if reflect.TypeOf(g.Path(strings.Join(newPath, ".")).Data()).Kind() != reflect.Array {
-					if slice, ok := value.([]interface{}); ok {
-						for _, valueOfSlice := range slice {
-							if err := g.ArrayAppend(valueOfSlice, newPath...); err != nil {
-								return err
-							}
+				target := g.Search(newPath...)
+				switch t := value.(type) {
+				case map[string]interface{}:
+					switch targetV := target.Data().(type) {
+					case map[string]interface{}:
+						if err := recursiveFnc(t, newPath); err != nil {
+							return err
 						}
-					} else if err := g.ArrayAppend(value, newPath...); err != nil {
-						return err
+					case []interface{}:
+						g.Set(append(targetV, t), newPath...)
+					default:
+						newSlice := append([]interface{}{}, targetV)
+						g.Set(append(newSlice, t), newPath...)
 					}
-				} else if reflect.TypeOf(g.Path(strings.Join(newPath, ".")).Data()).Kind() != reflect.Map {
-					return errors.New("Can't merge: %v")
+				case []interface{}:
+					for _, valueOfSlice := range t {
+						if err := g.ArrayAppend(valueOfSlice, newPath...); err != nil {
+							return err
+						}
+					}
+				default:
+					switch targetV := target.Data().(type) {
+					case []interface{}:
+						g.Set(append(targetV, t), newPath...)
+					default:
+						newSlice := append([]interface{}{}, targetV)
+						g.Set(append(newSlice, t), newPath...)
+					}
 				}
 			} else {
 				// path doesn't exist. So set the value
@@ -356,7 +367,8 @@ Array modification/search - Keeping these options simple right now, no need for 
 complicated since you can just cast to []interface{}, modify and then reassign with Set.
 */
 
-// ArrayAppend - Append a value onto a JSON array.
+// ArrayAppend - Append a value onto a JSON array. If the target is not a JSON array then it will be
+// converted into one, with its contents as the first element of the array.
 func (g *Container) ArrayAppend(value interface{}, path ...string) error {
 	if array, ok := g.Search(path...).Data().([]interface{}); ok {
 		array = append(array, value)
@@ -365,7 +377,7 @@ func (g *Container) ArrayAppend(value interface{}, path ...string) error {
 	}
 
 	newArray := []interface{}{}
-	newArray = append(newArray, g.Path(strings.Join(path, ".")).Data())
+	newArray = append(newArray, g.Search(path...).Data())
 	newArray = append(newArray, value)
 
 	_, err := g.Set(newArray, path...)

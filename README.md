@@ -267,21 +267,25 @@ jsonOutput := jsonParsedObj.Search("outter").String()
 
 ### Merge two containers
 
+You can merge a JSON structure into an existing one, where collisions will be
+converted into a JSON array.
 
 ```go
 jsonParsed1, _ := ParseJSON([]byte(`{"outter": {"value1": "one"}}`))
 jsonParsed2, _ := ParseJSON([]byte(`{"outter": {"inner": {"value3": "three"}}, "outter2": {"value2": "two"}}`))
-// Becomes `{"outter":{"inner":{"value3":"three"},"value1":"one"},"outter2":{"value2":"two"}}`
 
+jsonParsed1.Merge(jsonParsed2)
+// Becomes `{"outter":{"inner":{"value3":"three"},"value1":"one"},"outter2":{"value2":"two"}}`
 ```
 
-Respect also arrays:
+Arrays are merged:
 
 ```go
 jsonParsed1, _ := ParseJSON([]byte(`{"array": ["one"]}`))
 jsonParsed2, _ := ParseJSON([]byte(`{"array": ["two"]}`))
-// Becomes `{"array":["one", "two"]}`
 
+jsonParsed1.Merge(jsonParsed2)
+// Becomes `{"array":["one", "two"]}`
 ```
 
 ### Parsing Numbers
