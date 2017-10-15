@@ -1125,3 +1125,87 @@ func TestLargeSampleWithHtmlEscape(t *testing.T) {
 		t.Errorf("Wrong conversion with html escaping: %s != %s", exp, res)
 	}
 }
+
+func TestMergeCases(t *testing.T) {
+	type testCase struct {
+		first    string
+		second   string
+		expected string
+	}
+
+	testCases := []testCase{
+		{
+			first:    `{"outter":{"value1":"one"}}`,
+			second:   `{"outter":{"inner":{"value3": "threre"}},"outter2":{"value2": "two"}}`,
+			expected: `{"outter":{"inner":{"value3":"threre"},"value1":"one"},"outter2":{"value2":"two"}}`,
+		},
+		{
+			first:    `{"outter":["first"]}`,
+			second:   `{"outter":["second"]}`,
+			expected: `{"outter":["first","second"]}`,
+		},
+		{
+			first:    `{"outter":["first",{"inner":"second"}]}`,
+			second:   `{"outter":["third"]}`,
+			expected: `{"outter":["first",{"inner":"second"},"third"]}`,
+		},
+		{
+			first:    `{"outter":["first",{"inner":"second"}]}`,
+			second:   `{"outter":"third"}`,
+			expected: `{"outter":["first",{"inner":"second"},"third"]}`,
+		},
+		{
+			first:    `{"outter":"first"}`,
+			second:   `{"outter":"second"}`,
+			expected: `{"outter":["first","second"]}`,
+		},
+		{
+			first:    `{"outter":{"inner":"first"}}`,
+			second:   `{"outter":{"inner":"second"}}`,
+			expected: `{"outter":{"inner":["first","second"]}}`,
+		},
+		{
+			first:    `{"outter":{"inner":"first"}}`,
+			second:   `{"outter":"second"}`,
+			expected: `{"outter":[{"inner":"first"},"second"]}`,
+		},
+		{
+			first:    `{"outter":{"inner":"second"}}`,
+			second:   `{"outter":{"inner":{"inner2":"first"}}}`,
+			expected: `{"outter":{"inner":["second",{"inner2":"first"}]}}`,
+		},
+		{
+			first:    `{"outter":{"inner":["second"]}}`,
+			second:   `{"outter":{"inner":{"inner2":"first"}}}`,
+			expected: `{"outter":{"inner":["second",{"inner2":"first"}]}}`,
+		},
+		{
+			first:    `{"outter":"second"}`,
+			second:   `{"outter":{"inner":"first"}}`,
+			expected: `{"outter":["second",{"inner":"first"}]}`,
+		},
+	}
+
+	for i, test := range testCases {
+		var firstContainer, secondContainer *Container
+		var err error
+
+		firstContainer, err = ParseJSON([]byte(test.first))
+		if err != nil {
+			t.Errorf("[%d] Failed to parse '%v': %v", i, test.first, err)
+		}
+
+		secondContainer, err = ParseJSON([]byte(test.second))
+		if err != nil {
+			t.Errorf("[%d] Failed to parse '%v': %v", i, test.second, err)
+		}
+
+		if err = firstContainer.Merge(secondContainer); err != nil {
+			t.Errorf("[%d] Failed to merge: '%v': %v", i, test.first, err)
+		}
+
+		if exp, act := test.expected, firstContainer.String(); exp != act {
+			t.Errorf("[%d] Wrong result: %v != %v", i, act, exp)
+		}
+	}
+}
