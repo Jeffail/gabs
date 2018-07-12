@@ -304,6 +304,16 @@ func (g *Container) Delete(path ...string) error {
 	return nil
 }
 
+func (g *Container) DeleteAll(elements []string) error {
+	for _, element := range(elements) {
+		err := g.Delete(element)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // DeleteP - Does the same as Delete, but using a dot notation JSON path.
 func (g *Container) DeleteP(path string) error {
 	return g.Delete(strings.Split(path, ".")...)
