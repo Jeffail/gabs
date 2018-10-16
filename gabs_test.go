@@ -783,6 +783,21 @@ func TestArraysThree(t *testing.T) {
 	}
 }
 
+func TestArrayReplace(t *testing.T) {
+	json1 := New()
+
+	json1.Set(1, "first")
+	json1.ArrayAppend(2, "first")
+	json1.ArrayAppend(3, "second")
+
+	expected := `{"first":[1,2],"second":[3]}`
+	received := json1.String()
+
+	if expected != received {
+		t.Errorf("Wrong output, expected: %v, received: %v", expected, received)
+	}
+}
+
 func TestArraysRoot(t *testing.T) {
 	sample := []byte(`["test1"]`)
 
