@@ -1199,6 +1199,11 @@ func TestMergeCases(t *testing.T) {
 			second:   `{"outter":{"inner":"first"}}`,
 			expected: `{"outter":["second",{"inner":"first"}]}`,
 		},
+		{
+			first:    `{"outter":"first"}`,
+			second:   `{"outter":["second"]}`,
+			expected: `{"outter":["first","second"]}`,
+		},
 	}
 
 	for i, test := range testCases {
