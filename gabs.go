@@ -24,6 +24,8 @@ THE SOFTWARE.
 package gabs
 
 import (
+	"strconv"
+	"fmt"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -118,6 +120,47 @@ func (g *Container) Search(hierarchy ...string) *Container {
 		}
 	}
 	return &Container{object}
+}
+
+// JSONPointer parses a JSON pointer path (https://tools.ietf.org/html/rfc6901)
+// and either returns a *gabs.Container containing the result or an error if the
+// referenced item could not be found.
+func (g *Container) JSONPointer(path string) (*Container, error) {
+	if len(path) < 1 {
+		return nil, fmt.Errorf("failed to resolve JSON pointer: path must not be empty")
+	}
+	if path[0] != '/' {
+		return nil, fmt.Errorf("failed to resolve JSON pointer: path must begin with '/'")
+	}
+	hierarchy := strings.Split(path, "/")[1:]
+	for i, v := range hierarchy {
+		v = strings.ReplaceAll(v, "~1", "/")
+		v = strings.ReplaceAll(v, "~0", "~")
+		hierarchy[i] = v
+	}
+
+	object := g.Data()
+	for target := 0; target < len(hierarchy); target++ {
+		pathSeg := hierarchy[target]
+		if mmap, ok := object.(map[string]interface{}); ok {
+			object, ok = mmap[pathSeg]
+			if !ok {
+				return nil, fmt.Errorf("failed to resolve JSON pointer: index '%v' value '%v' was not found", target, pathSeg)
+			}
+		} else if marray, ok := object.([]interface{}); ok {
+			index, err := strconv.Atoi(pathSeg)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve JSON pointer: could not parse index '%v' value '%v' into array index: %v", target, pathSeg, err)
+			}
+			if len(marray) <= index {
+				return nil, fmt.Errorf("failed to resolve JSON pointer: index '%v' value '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
+			}
+			object = marray[index]
+		} else {
+			return nil, fmt.Errorf("failed to resolve JSON pointer: index '%v' field '%v' was not found", target, pathSeg)
+		}
+	}
+	return &Container{object}, nil
 }
 
 // S - Shorthand method, does the same thing as Search.
