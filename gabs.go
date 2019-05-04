@@ -127,15 +127,15 @@ func (g *Container) Search(hierarchy ...string) *Container {
 // referenced item could not be found.
 func (g *Container) JSONPointer(path string) (*Container, error) {
 	if len(path) < 1 {
-		return nil, fmt.Errorf("failed to resolve JSON pointer: path must not be empty")
+		return nil, errors.New("failed to resolve JSON pointer: path must not be empty")
 	}
 	if path[0] != '/' {
-		return nil, fmt.Errorf("failed to resolve JSON pointer: path must begin with '/'")
+		return nil, errors.New("failed to resolve JSON pointer: path must begin with '/'")
 	}
 	hierarchy := strings.Split(path, "/")[1:]
 	for i, v := range hierarchy {
-		v = strings.ReplaceAll(v, "~1", "/")
-		v = strings.ReplaceAll(v, "~0", "~")
+		v = strings.Replace(v, "~1", "/", -1)
+		v = strings.Replace(v, "~0", "~", -1)
 		hierarchy[i] = v
 	}
 
