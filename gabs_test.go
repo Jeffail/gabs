@@ -78,66 +78,66 @@ func TestJSONPointer(t *testing.T) {
 	}`)
 
 	type testCase struct {
-		path string
+		path  string
 		value string
-		err string
+		err   string
 	}
 	tests := []testCase{
 		{
 			path: "foo",
-			err: "failed to resolve JSON pointer: path must begin with '/'",
+			err:  "failed to resolve JSON pointer: path must begin with '/'",
 		},
 		{
 			path: "/a/doesnotexist",
-			err: "failed to resolve JSON pointer: index '1' value 'doesnotexist' was not found",
+			err:  "failed to resolve JSON pointer: index '1' value 'doesnotexist' was not found",
 		},
 		{
-			path: "/a",
+			path:  "/a",
 			value: `{"nested1":{"value1":5}}`,
 		},
 		{
-			path: "/what~1a~1pain",
+			path:  "/what~1a~1pain",
 			value: `"ouch1"`,
 		},
 		{
-			path: "/what~0a~0pain",
+			path:  "/what~0a~0pain",
 			value: `"ouch2"`,
 		},
 		{
-			path: "/what~0~1a~1~0pain",
+			path:  "/what~0~1a~1~0pain",
 			value: `"ouch3"`,
 		},
 		{
-			path: "/",
+			path:  "/",
 			value: `{"can we access":"this?"}`,
 		},
 		{
-			path: "//can we access",
+			path:  "//can we access",
 			value: `"this?"`,
 		},
 		{
-			path: "/d/",
+			path:  "/d/",
 			value: `{"what about":"this?"}`,
 		},
 		{
-			path: "/d//what about",
+			path:  "/d//what about",
 			value: `"this?"`,
 		},
 		{
-			path: "/c/1",
+			path:  "/c/1",
 			value: `"second"`,
 		},
 		{
-			path: "/c/2/nested2/value2",
+			path:  "/c/2/nested2/value2",
 			value: `15`,
 		},
 		{
 			path: "/c/notindex/value2",
-			err: `failed to resolve JSON pointer: could not parse index '1' value 'notindex' into array index: strconv.Atoi: parsing "notindex": invalid syntax`,
+			err:  `failed to resolve JSON pointer: could not parse index '1' value 'notindex' into array index: strconv.Atoi: parsing "notindex": invalid syntax`,
 		},
 		{
 			path: "/c/10/value2",
-			err: `failed to resolve JSON pointer: index '1' value '10' exceeded target array size of '5'`,
+			err:  `failed to resolve JSON pointer: index '1' value '10' exceeded target array size of '5'`,
 		},
 	}
 
@@ -416,17 +416,20 @@ func TestDeletes(t *testing.T) {
 }
 
 func TestExamples(t *testing.T) {
-	jsonParsed, _ := ParseJSON([]byte(`{
-		"outter":{
-			"inner":{
-				"value1":10,
-				"value2":22
-			},
-			"alsoInner":{
-				"value1":20
-			}
+	jsonParsed, err := ParseJSON([]byte(`{
+	"outter":{
+		"inner":{
+			"value1":10,
+			"value2":22
+		},
+		"alsoInner":{
+			"value1":20,
+			"array1":[
+				30, 40
+			]
 		}
-	}`))
+	}
+}`))
 
 	var value float64
 	var ok bool
@@ -438,6 +441,15 @@ func TestExamples(t *testing.T) {
 
 	value, ok = jsonParsed.Search("outter", "inner", "value1").Data().(float64)
 	if value != 10.0 || !ok {
+		t.Errorf("wrong value: %v, %v", value, ok)
+	}
+
+	gObj, err := jsonParsed.JSONPointer("/outter/alsoInner/array1/1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	value, ok = gObj.Data().(float64)
+	if value != 40.0 || !ok {
 		t.Errorf("wrong value: %v, %v", value, ok)
 	}
 
@@ -906,6 +918,50 @@ func TestArraysThree(t *testing.T) {
 	test.SetIndex(10, 0)
 	if val := json1.S("test1", "test2").Index(0).Data().(int); val != 10 {
 		t.Error(err)
+	}
+}
+
+func TestSetJSONPointer(t *testing.T) {
+	type testCase struct {
+		input   string
+		pointer string
+		value   interface{}
+		output  string
+	}
+	tests := []testCase{
+		{
+			input:   `{"foo":{"bar":"baz"}}`,
+			pointer: "/foo/bar",
+			value:   "qux",
+			output:  `{"foo":{"bar":"qux"}}`,
+		},
+		{
+			input:   `{"foo":["bar","ignored","baz"]}`,
+			pointer: "/foo/2",
+			value:   "qux",
+			output:  `{"foo":["bar","ignored","qux"]}`,
+		},
+		{
+			input:   `{"foo":["bar","ignored",{"bar":"baz"}]}`,
+			pointer: "/foo/2/bar",
+			value:   "qux",
+			output:  `{"foo":["bar","ignored",{"bar":"qux"}]}`,
+		},
+	}
+
+	for _, test := range tests {
+		gObj, err := ParseJSON([]byte(test.input))
+		if err != nil {
+			t.Errorf("Failed to parse '%v': %v", test.input, err)
+			continue
+		}
+		if err = gObj.SetJSONPointer(test.value, test.pointer); err != nil {
+			t.Error(err)
+			continue
+		}
+		if exp, act := test.output, gObj.String(); exp != act {
+			t.Errorf("Wrong result: %v != %v", act, exp)
+		}
 	}
 }
 

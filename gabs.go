@@ -74,6 +74,24 @@ var (
 
 //------------------------------------------------------------------------------
 
+func resolveJSONPointerHierarchy(path string) ([]string, error) {
+	if len(path) < 1 {
+		return nil, errors.New("failed to resolve JSON pointer: path must not be empty")
+	}
+	if path[0] != '/' {
+		return nil, errors.New("failed to resolve JSON pointer: path must begin with '/'")
+	}
+	hierarchy := strings.Split(path, "/")[1:]
+	for i, v := range hierarchy {
+		v = strings.Replace(v, "~1", "/", -1)
+		v = strings.Replace(v, "~0", "~", -1)
+		hierarchy[i] = v
+	}
+	return hierarchy, nil
+}
+
+//------------------------------------------------------------------------------
+
 // Container references a specific element within a JSON structure.
 type Container struct {
 	object interface{}
@@ -134,17 +152,9 @@ func (g *Container) Search(hierarchy ...string) *Container {
 // and either returns a *gabs.Container containing the result or an error if the
 // referenced item could not be found.
 func (g *Container) JSONPointer(path string) (*Container, error) {
-	if len(path) < 1 {
-		return nil, errors.New("failed to resolve JSON pointer: path must not be empty")
-	}
-	if path[0] != '/' {
-		return nil, errors.New("failed to resolve JSON pointer: path must begin with '/'")
-	}
-	hierarchy := strings.Split(path, "/")[1:]
-	for i, v := range hierarchy {
-		v = strings.Replace(v, "~1", "/", -1)
-		v = strings.Replace(v, "~0", "~", -1)
-		hierarchy[i] = v
+	hierarchy, err := resolveJSONPointerHierarchy(path)
+	if err != nil {
+		return nil, err
 	}
 
 	object := g.Data()
@@ -165,7 +175,7 @@ func (g *Container) JSONPointer(path string) (*Container, error) {
 			}
 			object = marray[index]
 		} else {
-			return nil, fmt.Errorf("failed to resolve JSON pointer: index '%v' field '%v' was not found", target, pathSeg)
+			return &Container{nil}, fmt.Errorf("failed to resolve JSON pointer: index '%v' field '%v' was not found", target, pathSeg)
 		}
 	}
 	return &Container{object}, nil
@@ -277,6 +287,52 @@ func (g *Container) SetIndex(value interface{}, index int) (*Container, error) {
 		return &Container{array[index]}, nil
 	}
 	return &Container{nil}, ErrNotArray
+}
+
+// SetJSONPointer parses a JSON pointer path
+// (https://tools.ietf.org/html/rfc6901) and sets the leaf to a value. Returns
+// an error if the pointer could not be resolved due to missing fields.
+func (g *Container) SetJSONPointer(value interface{}, path string) error {
+	hierarchy, err := resolveJSONPointerHierarchy(path)
+	if err != nil {
+		return err
+	}
+
+	if len(hierarchy) == 0 {
+		g.object = value
+		return nil
+	}
+
+	object := g.object
+
+	for target := 0; target < len(hierarchy); target++ {
+		pathSeg := hierarchy[target]
+		if mmap, ok := object.(map[string]interface{}); ok {
+			if target == len(hierarchy)-1 {
+				object = value
+				mmap[pathSeg] = object
+			} else if object = mmap[pathSeg]; object == nil {
+				return fmt.Errorf("failed to resolve JSON pointer: index '%v' value '%v' was not found", target, pathSeg)
+			}
+		} else if marray, ok := object.([]interface{}); ok {
+			index, err := strconv.Atoi(pathSeg)
+			if err != nil {
+				return fmt.Errorf("failed to resolve JSON pointer: could not parse index '%v' value '%v' into array index: %v", target, pathSeg, err)
+			}
+			if len(marray) <= index {
+				return fmt.Errorf("failed to resolve JSON pointer: index '%v' value '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
+			}
+			if target == len(hierarchy)-1 {
+				object = value
+				marray[index] = object
+			} else if object = marray[index]; object == nil {
+				return fmt.Errorf("failed to resolve JSON pointer: index '%v' value '%v' was not found", target, pathSeg)
+			}
+		} else {
+			return fmt.Errorf("failed to resolve JSON pointer: index '%v' value '%v' was not found", target, pathSeg)
+		}
+	}
+	return nil
 }
 
 // Object creates a new JSON object at a target path. Returns an error if the
