@@ -298,6 +298,7 @@ intValue, err := val.Path("test.int").Data().(json.Number).Int64()
 
 ## Version 1
 
-It's still possible to pull the version 1 API with `go get github.com/Jeffail/gabs` as the new version is stored under the subdirectory `v2` for full backwards compatibility.
+If you're migrating from version 1 check out [`migration.md`][migration-doc] for guidance.
 
 [godoc-url]: https://godoc.org/github.com/Jeffail/gabs/v2
+[migration-doc]: ./migration.md

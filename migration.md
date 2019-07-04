@@ -1,7 +1,7 @@
 Migration Guides
 ================
 
-## Migrating to v2
+## Migrating to Version 2
 
 ### Consume
 
