@@ -2,7 +2,7 @@
 
 [![godoc for Jeffail/gabs][godoc-badge]][godoc-url]
 
-Gabs is a small utility for dealing with dynamic or unknown JSON structures in Go. It's pretty much just a helpful wrapper for navigating hierarchies of `map[string]interface{}` objects provided by the `encoding/json` package.
+Gabs is a small utility for dealing with dynamic or unknown JSON structures in Go. It's pretty much just a helpful wrapper for navigating hierarchies of `map[string]interface{}` objects provided by the `encoding/json` package. It does nothing spectacular apart from being fabulous.
 
 ## Install
 
