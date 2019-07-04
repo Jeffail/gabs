@@ -4,6 +4,8 @@
 
 Gabs is a small utility for dealing with dynamic or unknown JSON structures in Go. It's pretty much just a helpful wrapper for navigating hierarchies of `map[string]interface{}` objects provided by the `encoding/json` package. It does nothing spectacular apart from being fabulous.
 
+If you're migrating from version 1 check out [`migration.md`][migration-doc] for guidance.
+
 ## Install
 
 ```sh
@@ -295,10 +297,6 @@ if err != nil {
 
 intValue, err := val.Path("test.int").Data().(json.Number).Int64()
 ```
-
-## Version 1
-
-If you're migrating from version 1 check out [`migration.md`][migration-doc] for guidance.
 
 [godoc-url]: https://godoc.org/github.com/Jeffail/gabs/v2
 [migration-doc]: ./migration.md
