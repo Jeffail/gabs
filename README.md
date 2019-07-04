@@ -2,21 +2,37 @@
 
 [![godoc for Jeffail/gabs][godoc-badge]][godoc-url]
 
-Gabs is a small utility for dealing with dynamic or unknown JSON structures in
-Go. It's pretty much just a helpful wrapper for navigating hierarchies of
-`map[string]interface{}` objects provided by the `encoding/json` package.
+Gabs is a small utility for dealing with dynamic or unknown JSON structures in Go. It's pretty much just a helpful wrapper for navigating hierarchies of `map[string]interface{}` objects provided by the `encoding/json` package.
 
 ## Install
 
-``` bash
-go get github.com/Jeffail/gabs
+```sh
+go get github.com/Jeffail/gabs/v2
 ```
 
 ## Use
 
+### Import
+
+Using modules:
+
+```go
+import (
+	"github.com/Jeffail/gabs/v2
+)
+```
+
+Without modules:
+
+```go
+import (
+	gabs "github.com/Jeffail/gabs/v2
+)
+```
+
 ### Parsing and searching JSON
 
-``` go
+```go
 jsonParsed, err := gabs.ParseJSON([]byte(`{
 	"outter":{
 		"inner":{
@@ -66,7 +82,7 @@ exists = jsonParsed.ExistsP("does.not.exist")
 
 ### Iterating objects
 
-``` go
+```go
 jsonParsed, err := gabs.ParseJSON([]byte(`{"object":{"first":1,"second":2,"third":3}}`))
 if err != nil {
 	panic(err)
@@ -80,7 +96,7 @@ for key, child := range jsonParsed.S("object").ChildrenMap() {
 
 ### Iterating arrays
 
-``` go
+```go
 jsonParsed, err := gabs.ParseJSON([]byte(`{"array":["first","second","third"]}`))
 if err != nil {
 	panic(err)
@@ -99,14 +115,13 @@ second
 third
 ```
 
-Children() will return all children of an array in order. This also works on
-objects, however, the children will be returned in a random order.
+Children() will return all children of an array in order. This also works on objects, however, the children will be returned in a random order.
 
 ### Searching through arrays
 
 If your structure contains arrays you must target an index in your search.
 
-``` go
+```go
 jsonParsed, err := gabs.ParseJSON([]byte(`{"array":[{"value":1},{"value":2},{"value":3}]}`))
 if err != nil {
 	panic(err)
@@ -118,7 +133,7 @@ Will print `2`.
 
 ### Generating JSON
 
-``` go
+```go
 jsonObj := gabs.New()
 // or gabs.Wrap(jsonObject) to work on an existing map[string]interface{}
 
@@ -137,7 +152,7 @@ Will print:
 
 To pretty-print:
 
-``` go
+```go
 fmt.Println(jsonObj.StringIndent("", "  "))
 ```
 
@@ -159,7 +174,7 @@ Will print:
 
 ### Generating Arrays
 
-``` go
+```go
 jsonObj := gabs.New()
 
 jsonObj.Array("foo", "array")
@@ -180,7 +195,7 @@ Will print:
 
 Working with arrays by index:
 
-``` go
+```go
 jsonObj := gabs.New()
 
 // Create an array with the length of 3
@@ -209,7 +224,7 @@ Will print:
 
 This is the easiest part:
 
-``` go
+```go
 jsonParsedObj, _ := gabs.ParseJSON([]byte(`{
 	"outter":{
 		"values":{
@@ -226,7 +241,7 @@ jsonOutput := jsonParsedObj.String()
 
 And to serialize a specific segment is as simple as:
 
-``` go
+```go
 jsonParsedObj := gabs.ParseJSON([]byte(`{
 	"outter":{
 		"values":{
@@ -243,10 +258,9 @@ jsonOutput := jsonParsedObj.Search("outter").String()
 
 ### Merge two containers
 
-You can merge a JSON structure into an existing one, where collisions will be
-converted into a JSON array.
+You can merge a JSON structure into an existing one, where collisions will be converted into a JSON array.
 
-``` go
+```go
 jsonParsed1, _ := ParseJSON([]byte(`{"outter":{"value1":"one"}}`))
 jsonParsed2, _ := ParseJSON([]byte(`{"outter":{"inner":{"value3":"three"}},"outter2":{"value2":"two"}}`))
 
@@ -256,7 +270,7 @@ jsonParsed1.Merge(jsonParsed2)
 
 Arrays are merged:
 
-``` go
+```go
 jsonParsed1, _ := ParseJSON([]byte(`{"array":["one"]}`))
 jsonParsed2, _ := ParseJSON([]byte(`{"array":["two"]}`))
 
@@ -266,11 +280,9 @@ jsonParsed1.Merge(jsonParsed2)
 
 ### Parsing Numbers
 
-Gabs uses the `json` package under the bonnet, which by default will parse all
-number values into `float64`. If you need to parse `Int` values then you should
-use a [`json.Decoder`](https://golang.org/pkg/encoding/json/#Decoder):
+Gabs uses the `json` package under the bonnet, which by default will parse all number values into `float64`. If you need to parse `Int` values then you should use a [`json.Decoder`](https://golang.org/pkg/encoding/json/#Decoder):
 
-``` go
+```go
 sample := []byte(`{"test":{"int":10,"float":6.66}}`)
 dec := json.NewDecoder(bytes.NewReader(sample))
 dec.UseNumber()
@@ -283,5 +295,9 @@ if err != nil {
 
 intValue, err := val.Path("test.int").Data().(json.Number).Int64()
 ```
+
+## Version 1
+
+It's still possible to pull the version 1 API with `go get github.com/Jeffail/gabs` as the new version is stored under the subdirectory `v2` for full backwards compatibility.
 
 [godoc-url]: https://godoc.org/github.com/Jeffail/gabs/v2
