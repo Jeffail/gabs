@@ -65,6 +65,9 @@ var (
 	// ErrInvalidInputText is returned when the input data could not be parsed.
 	ErrInvalidInputText = errors.New("input text could not be parsed")
 
+	// ErrNotFound is returned when a query leaf is not found.
+	ErrNotFound = errors.New("field not found")
+
 	// ErrInvalidPath is returned when the filepath was not valid.
 	ErrInvalidPath = errors.New("invalid file path")
 
@@ -388,12 +391,16 @@ func (g *Container) Delete(hierarchy ...string) error {
 	object := g.object
 	target := hierarchy[len(hierarchy)-1]
 	if len(hierarchy) > 1 {
-		object = g.Search(hierarchy[:len(hierarchy)-2]...)
+		object = g.Search(hierarchy[:len(hierarchy)-1]...).Data()
 	}
 
 	obj, ok := object.(map[string]interface{})
 	if !ok {
 		return ErrNotObj
+	}
+
+	if _, ok = obj[target]; !ok {
+		return ErrNotFound
 	}
 
 	delete(obj, target)

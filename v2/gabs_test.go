@@ -416,25 +416,25 @@ func TestDeletes(t *testing.T) {
 		t.Error(err)
 	}
 	if err := jsonParsed.Delete("outter", "inner", "value4"); err == nil {
-		t.Error(fmt.Errorf("value4 should not have been found in outter.inner"))
+		t.Error("value4 should not have been found in outter.inner")
 	}
 	if err := jsonParsed.Delete("outter", "another", "value1"); err != nil {
 		t.Error(err)
 	}
 	if err := jsonParsed.Delete("outter", "another", "value4"); err == nil {
-		t.Error(fmt.Errorf("value4 should not have been found in outter.another"))
+		t.Error("value4 should not have been found in outter.another")
 	}
 	if err := jsonParsed.DeleteP("outter.alsoInner.value1"); err != nil {
 		t.Error(err)
 	}
 	if err := jsonParsed.DeleteP("outter.alsoInner.value4"); err == nil {
-		t.Error(fmt.Errorf("value4 should not have been found in outter.alsoInner"))
+		t.Error("value4 should not have been found in outter.alsoInner")
 	}
 	if err := jsonParsed.DeleteP("outter.another.value2"); err != nil {
 		t.Error(err)
 	}
 	if err := jsonParsed.Delete("outter.another.value4"); err == nil {
-		t.Error(fmt.Errorf("value4 should not have been found in outter.another"))
+		t.Error("value4 should not have been found in outter.another")
 	}
 
 	expected := `{"outter":{"alsoInner":{"value2":42,"value3":92},"another":{"value3":null},"inner":{"value1":10,"value3":32}}}`
