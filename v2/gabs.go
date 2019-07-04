@@ -1,27 +1,25 @@
-/*
-Copyright (c) 2014 Ashley Jeffs
+// Copyright (c) 2019 Ashley Jeffs
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
-
-// Package gabs implements a simplified wrapper around creating and parsing
-// unknown or dynamic JSON.
+// Package gabs implements a wrapper around creating and parsing unknown or
+// dynamic map structures resulting from JSON parsing.
 package gabs
 
 import (
@@ -48,6 +46,9 @@ var (
 	// ErrNotObj is returned when a target is not an object but needs to be for
 	// the intended operation.
 	ErrNotObj = errors.New("not an object")
+
+	// ErrInvalidQuery is returned when a seach query was not valid.
+	ErrInvalidQuery = errors.New("invalid search query")
 
 	// ErrNotArray is returned when a target is not an array but needs to be for
 	// the intended operation.
@@ -92,12 +93,12 @@ func resolveJSONPointerHierarchy(path string) ([]string, error) {
 
 //------------------------------------------------------------------------------
 
-// Container references a specific element within a JSON structure.
+// Container references a specific element within a wrapped structure.
 type Container struct {
 	object interface{}
 }
 
-// Data returns the underlying interface{} of the target element in the JSON
+// Data returns the underlying value of the target element in the wrapped
 // structure.
 func (g *Container) Data() interface{} {
 	if g == nil {
@@ -108,44 +109,58 @@ func (g *Container) Data() interface{} {
 
 //------------------------------------------------------------------------------
 
-// Path searches the JSON structure following a path in dot notation.
-func (g *Container) Path(path string) *Container {
-	return g.Search(strings.Split(path, ".")...)
-}
-
-// Search attempts to find and return an object within the JSON structure by
-// following a provided hierarchy of field names to locate the target. If the
-// search encounters an array and has not reached the end target then it will
-// iterate each object of the array for the target and return all of the results
-// in a JSON array.
-func (g *Container) Search(hierarchy ...string) *Container {
-	var object interface{}
-
-	object = g.Data()
+func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Container, error) {
+	object := g.Data()
 	for target := 0; target < len(hierarchy); target++ {
+		pathSeg := hierarchy[target]
 		if mmap, ok := object.(map[string]interface{}); ok {
-			object, ok = mmap[hierarchy[target]]
+			object, ok = mmap[pathSeg]
 			if !ok {
-				return nil
+				return nil, fmt.Errorf("failed to resolve path segment '%v': key '%v' was not found", target, pathSeg)
 			}
 		} else if marray, ok := object.([]interface{}); ok {
-			tmpArray := []interface{}{}
-			for _, val := range marray {
-				tmpGabs := &Container{val}
-				res := tmpGabs.Search(hierarchy[target:]...)
-				if res != nil {
-					tmpArray = append(tmpArray, res.Data())
+			if allowWildcard && pathSeg == "*" {
+				tmpArray := []interface{}{}
+				for _, val := range marray {
+					if (target + 1) >= len(hierarchy) {
+						tmpArray = append(tmpArray, val)
+					} else if res := Wrap(val).Search(hierarchy[target+1:]...); res != nil {
+						tmpArray = append(tmpArray, res.Data())
+					}
 				}
+				if len(tmpArray) == 0 {
+					return nil, nil
+				}
+				return &Container{tmpArray}, nil
 			}
-			if len(tmpArray) == 0 {
-				return nil
+			index, err := strconv.Atoi(pathSeg)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but segment value '%v' could not be parsed into array index: %v", target, pathSeg, err)
 			}
-			return &Container{tmpArray}
+			if len(marray) <= index {
+				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
+			}
+			object = marray[index]
 		} else {
-			return nil
+			return nil, fmt.Errorf("failed to resolve path segment '%v': field '%v' was not found", target, pathSeg)
 		}
 	}
-	return &Container{object}
+	return &Container{object}, nil
+}
+
+// Search attempts to find and return an object within the wrapped structure by
+// following a provided hierarchy of field names to locate the target. If the
+// search encounters an array then the next hierarchy field name is interpretted
+// as an integer index.
+func (g *Container) Search(hierarchy ...string) *Container {
+	c, _ := g.searchStrict(true, hierarchy...)
+	return c
+}
+
+// Path searches the wrapped structure following a path in dot notation,
+// segments of this path are searched according to the same rules as Search.
+func (g *Container) Path(path string) *Container {
+	return g.Search(strings.Split(path, ".")...)
 }
 
 // JSONPointer parses a JSON pointer path (https://tools.ietf.org/html/rfc6901)
@@ -156,29 +171,7 @@ func (g *Container) JSONPointer(path string) (*Container, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	object := g.Data()
-	for target := 0; target < len(hierarchy); target++ {
-		pathSeg := hierarchy[target]
-		if mmap, ok := object.(map[string]interface{}); ok {
-			object, ok = mmap[pathSeg]
-			if !ok {
-				return nil, fmt.Errorf("failed to resolve JSON pointer: index '%v' value '%v' was not found", target, pathSeg)
-			}
-		} else if marray, ok := object.([]interface{}); ok {
-			index, err := strconv.Atoi(pathSeg)
-			if err != nil {
-				return nil, fmt.Errorf("failed to resolve JSON pointer: could not parse index '%v' value '%v' into array index: %v", target, pathSeg, err)
-			}
-			if len(marray) <= index {
-				return nil, fmt.Errorf("failed to resolve JSON pointer: index '%v' value '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
-			}
-			object = marray[index]
-		} else {
-			return &Container{nil}, fmt.Errorf("failed to resolve JSON pointer: index '%v' field '%v' was not found", target, pathSeg)
-		}
-	}
-	return &Container{object}, nil
+	return g.searchStrict(false, hierarchy...)
 }
 
 // S is a shorthand alias for Search.
@@ -186,7 +179,7 @@ func (g *Container) S(hierarchy ...string) *Container {
 	return g.Search(hierarchy...)
 }
 
-// Exists checks whether a path exists.
+// Exists checks whether a field exists within the hierarchy.
 func (g *Container) Exists(hierarchy ...string) bool {
 	return g.Search(hierarchy...) != nil
 }
@@ -200,77 +193,100 @@ func (g *Container) ExistsP(path string) bool {
 func (g *Container) Index(index int) *Container {
 	if array, ok := g.Data().([]interface{}); ok {
 		if index >= len(array) {
-			return &Container{nil}
+			return nil
 		}
 		return &Container{array[index]}
 	}
-	return &Container{nil}
+	return nil
 }
 
 // Children returns a slice of all children of an array element. This also works
 // for objects, however, the children returned for an object will be in a random
-// order and you lose the names of the returned objects this way.
-func (g *Container) Children() ([]*Container, error) {
+// order and you lose the names of the returned objects this way. If the
+// underlying container value isn't an array or map nil is returned.
+func (g *Container) Children() []*Container {
 	if array, ok := g.Data().([]interface{}); ok {
 		children := make([]*Container, len(array))
 		for i := 0; i < len(array); i++ {
 			children[i] = &Container{array[i]}
 		}
-		return children, nil
+		return children
 	}
 	if mmap, ok := g.Data().(map[string]interface{}); ok {
 		children := []*Container{}
 		for _, obj := range mmap {
 			children = append(children, &Container{obj})
 		}
-		return children, nil
+		return children
 	}
-	return nil, ErrNotObjOrArray
+	return nil
 }
 
-// ChildrenMap returns a map of all the children of an object element.
-func (g *Container) ChildrenMap() (map[string]*Container, error) {
+// ChildrenMap returns a map of all the children of an object element. IF the
+// underlying value isn't a object then an empty map is returned.
+func (g *Container) ChildrenMap() map[string]*Container {
 	if mmap, ok := g.Data().(map[string]interface{}); ok {
-		children := map[string]*Container{}
+		children := make(map[string]*Container, len(mmap))
 		for name, obj := range mmap {
 			children[name] = &Container{obj}
 		}
-		return children, nil
+		return children
 	}
-	return nil, ErrNotObj
+	return map[string]*Container{}
 }
 
 //------------------------------------------------------------------------------
 
-// Set the value of a field at a JSON path, any parts of the path that do not
-// exist will be constructed, and if a collision occurs with a non object type
-// whilst iterating the path an error is returned.
-func (g *Container) Set(value interface{}, path ...string) (*Container, error) {
-	if len(path) == 0 {
+// Set attempts to set the value of a field located by a hierarchy of field
+// names. If the search encounters an array then the next hierarchy field name
+// is interpretted as an integer index. Any parts of the hierarchy that do not
+// exist will be constructed as objects. Returns a container of the new value or
+// an error.
+func (g *Container) Set(value interface{}, hierarchy ...string) (*Container, error) {
+	if g == nil {
+		return nil, errors.New("failed to resolve path, container is nil")
+	}
+	if len(hierarchy) == 0 {
 		g.object = value
 		return g, nil
 	}
-	var object interface{}
 	if g.object == nil {
 		g.object = map[string]interface{}{}
 	}
-	object = g.object
-	for target := 0; target < len(path); target++ {
+	object := g.object
+
+	for target := 0; target < len(hierarchy); target++ {
+		pathSeg := hierarchy[target]
 		if mmap, ok := object.(map[string]interface{}); ok {
-			if target == len(path)-1 {
-				mmap[path[target]] = value
-			} else if mmap[path[target]] == nil {
-				mmap[path[target]] = map[string]interface{}{}
+			if target == len(hierarchy)-1 {
+				object = value
+				mmap[pathSeg] = object
+			} else if object = mmap[pathSeg]; object == nil {
+				mmap[pathSeg] = map[string]interface{}{}
+				object = mmap[pathSeg]
 			}
-			object = mmap[path[target]]
+		} else if marray, ok := object.([]interface{}); ok {
+			index, err := strconv.Atoi(pathSeg)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but segment value '%v' could not be parsed into array index: %v", target, pathSeg, err)
+			}
+			if len(marray) <= index {
+				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
+			}
+			if target == len(hierarchy)-1 {
+				object = value
+				marray[index] = object
+			} else if object = marray[index]; object == nil {
+				return nil, fmt.Errorf("failed to resolve path segment '%v': field '%v' was not found", target, pathSeg)
+			}
 		} else {
-			return &Container{nil}, ErrPathCollision
+			return nil, ErrPathCollision
 		}
 	}
 	return &Container{object}, nil
 }
 
-// SetP sets the value of a field at a JSON path using dot notation, any parts
+// SetP sets the value of a field at a path using dot notation, any parts
 // of the path that do not exist will be constructed, and if a collision occurs
 // with a non object type whilst iterating the path an error is returned.
 func (g *Container) SetP(value interface{}, path string) (*Container, error) {
@@ -281,64 +297,29 @@ func (g *Container) SetP(value interface{}, path string) (*Container, error) {
 func (g *Container) SetIndex(value interface{}, index int) (*Container, error) {
 	if array, ok := g.Data().([]interface{}); ok {
 		if index >= len(array) {
-			return &Container{nil}, ErrOutOfBounds
+			return nil, ErrOutOfBounds
 		}
 		array[index] = value
 		return &Container{array[index]}, nil
 	}
-	return &Container{nil}, ErrNotArray
+	return nil, ErrNotArray
 }
 
 // SetJSONPointer parses a JSON pointer path
 // (https://tools.ietf.org/html/rfc6901) and sets the leaf to a value. Returns
 // an error if the pointer could not be resolved due to missing fields.
-func (g *Container) SetJSONPointer(value interface{}, path string) error {
+func (g *Container) SetJSONPointer(value interface{}, path string) (*Container, error) {
 	hierarchy, err := resolveJSONPointerHierarchy(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	if len(hierarchy) == 0 {
-		g.object = value
-		return nil
-	}
-
-	object := g.object
-
-	for target := 0; target < len(hierarchy); target++ {
-		pathSeg := hierarchy[target]
-		if mmap, ok := object.(map[string]interface{}); ok {
-			if target == len(hierarchy)-1 {
-				object = value
-				mmap[pathSeg] = object
-			} else if object = mmap[pathSeg]; object == nil {
-				return fmt.Errorf("failed to resolve JSON pointer: index '%v' value '%v' was not found", target, pathSeg)
-			}
-		} else if marray, ok := object.([]interface{}); ok {
-			index, err := strconv.Atoi(pathSeg)
-			if err != nil {
-				return fmt.Errorf("failed to resolve JSON pointer: could not parse index '%v' value '%v' into array index: %v", target, pathSeg, err)
-			}
-			if len(marray) <= index {
-				return fmt.Errorf("failed to resolve JSON pointer: index '%v' value '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
-			}
-			if target == len(hierarchy)-1 {
-				object = value
-				marray[index] = object
-			} else if object = marray[index]; object == nil {
-				return fmt.Errorf("failed to resolve JSON pointer: index '%v' value '%v' was not found", target, pathSeg)
-			}
-		} else {
-			return fmt.Errorf("failed to resolve JSON pointer: index '%v' value '%v' was not found", target, pathSeg)
-		}
-	}
-	return nil
+	return g.Set(value, hierarchy...)
 }
 
 // Object creates a new JSON object at a target path. Returns an error if the
 // path contains a collision with a non object type.
-func (g *Container) Object(path ...string) (*Container, error) {
-	return g.Set(map[string]interface{}{}, path...)
+func (g *Container) Object(hierarchy ...string) (*Container, error) {
+	return g.Set(map[string]interface{}{}, hierarchy...)
 }
 
 // ObjectP creates a new JSON object at a target path using dot notation.
@@ -355,8 +336,8 @@ func (g *Container) ObjectI(index int) (*Container, error) {
 
 // Array creates a new JSON array at a path. Returns an error if the path
 // contains a collision with a non object type.
-func (g *Container) Array(path ...string) (*Container, error) {
-	return g.Set([]interface{}{}, path...)
+func (g *Container) Array(hierarchy ...string) (*Container, error) {
+	return g.Set([]interface{}{}, hierarchy...)
 }
 
 // ArrayP creates a new JSON array at a path using dot notation. Returns an
@@ -373,9 +354,9 @@ func (g *Container) ArrayI(index int) (*Container, error) {
 
 // ArrayOfSize creates a new JSON array of a particular size at a path. Returns
 // an error if the path contains a collision with a non object type.
-func (g *Container) ArrayOfSize(size int, path ...string) (*Container, error) {
+func (g *Container) ArrayOfSize(size int, hierarchy ...string) (*Container, error) {
 	a := make([]interface{}, size)
-	return g.Set(a, path...)
+	return g.Set(a, hierarchy...)
 }
 
 // ArrayOfSizeP creates a new JSON array of a particular size at a path using
@@ -394,28 +375,28 @@ func (g *Container) ArrayOfSizeI(size, index int) (*Container, error) {
 }
 
 // Delete an element at a path, an error is returned if the element does not
-// exist.
-func (g *Container) Delete(path ...string) error {
-	var object interface{}
-
-	if g.object == nil {
+// exist or is not an object. In order to remove an array element please use
+// ArrayRemove.
+func (g *Container) Delete(hierarchy ...string) error {
+	if g == nil || g.object == nil {
 		return ErrNotObj
 	}
-	object = g.object
-	for target := 0; target < len(path); target++ {
-		if mmap, ok := object.(map[string]interface{}); ok {
-			if target == len(path)-1 {
-				if _, ok := mmap[path[target]]; ok {
-					delete(mmap, path[target])
-				} else {
-					return ErrNotObj
-				}
-			}
-			object = mmap[path[target]]
-		} else {
-			return ErrNotObj
-		}
+	if len(hierarchy) == 0 {
+		return ErrInvalidQuery
 	}
+
+	object := g.object
+	target := hierarchy[len(hierarchy)-1]
+	if len(hierarchy) > 1 {
+		object = g.Search(hierarchy[:len(hierarchy)-2]...)
+	}
+
+	obj, ok := object.(map[string]interface{})
+	if !ok {
+		return ErrNotObj
+	}
+
+	delete(obj, target)
 	return nil
 }
 
@@ -506,20 +487,20 @@ then reassign with Set.
 // ArrayAppend attempts to append a value onto a JSON array at a path. If the
 // target is not a JSON array then it will be converted into one, with its
 // original contents set to the first element of the array.
-func (g *Container) ArrayAppend(value interface{}, path ...string) error {
-	if array, ok := g.Search(path...).Data().([]interface{}); ok {
+func (g *Container) ArrayAppend(value interface{}, hierarchy ...string) error {
+	if array, ok := g.Search(hierarchy...).Data().([]interface{}); ok {
 		array = append(array, value)
-		_, err := g.Set(array, path...)
+		_, err := g.Set(array, hierarchy...)
 		return err
 	}
 
 	newArray := []interface{}{}
-	if d := g.Search(path...).Data(); d != nil {
+	if d := g.Search(hierarchy...).Data(); d != nil {
 		newArray = append(newArray, d)
 	}
 	newArray = append(newArray, value)
 
-	_, err := g.Set(newArray, path...)
+	_, err := g.Set(newArray, hierarchy...)
 	return err
 }
 
@@ -532,11 +513,11 @@ func (g *Container) ArrayAppendP(value interface{}, path string) error {
 
 // ArrayRemove attempts to remove an element identified by an index from a JSON
 // array at a path.
-func (g *Container) ArrayRemove(index int, path ...string) error {
+func (g *Container) ArrayRemove(index int, hierarchy ...string) error {
 	if index < 0 {
 		return ErrOutOfBounds
 	}
-	array, ok := g.Search(path...).Data().([]interface{})
+	array, ok := g.Search(hierarchy...).Data().([]interface{})
 	if !ok {
 		return ErrNotArray
 	}
@@ -545,7 +526,7 @@ func (g *Container) ArrayRemove(index int, path ...string) error {
 	} else {
 		return ErrOutOfBounds
 	}
-	_, err := g.Set(array, path...)
+	_, err := g.Set(array, hierarchy...)
 	return err
 }
 
@@ -557,18 +538,18 @@ func (g *Container) ArrayRemoveP(index int, path string) error {
 
 // ArrayElement attempts to access an element by an index from a JSON array at a
 // path.
-func (g *Container) ArrayElement(index int, path ...string) (*Container, error) {
+func (g *Container) ArrayElement(index int, hierarchy ...string) (*Container, error) {
 	if index < 0 {
-		return &Container{nil}, ErrOutOfBounds
+		return nil, ErrOutOfBounds
 	}
-	array, ok := g.Search(path...).Data().([]interface{})
+	array, ok := g.Search(hierarchy...).Data().([]interface{})
 	if !ok {
-		return &Container{nil}, ErrNotArray
+		return nil, ErrNotArray
 	}
 	if index < len(array) {
 		return &Container{array[index]}, nil
 	}
-	return &Container{nil}, ErrOutOfBounds
+	return nil, ErrOutOfBounds
 }
 
 // ArrayElementP attempts to access an element by an index from a JSON array at
@@ -578,8 +559,8 @@ func (g *Container) ArrayElementP(index int, path string) (*Container, error) {
 }
 
 // ArrayCount counts the number of elements in a JSON array at a path.
-func (g *Container) ArrayCount(path ...string) (int, error) {
-	if array, ok := g.Search(path...).Data().([]interface{}); ok {
+func (g *Container) ArrayCount(hierarchy ...string) (int, error) {
+	if array, ok := g.Search(hierarchy...).Data().([]interface{}); ok {
 		return len(array), nil
 	}
 	return 0, ErrNotArray
@@ -595,23 +576,21 @@ func (g *Container) ArrayCountP(path string) (int, error) {
 
 // Bytes marshals an element to a JSON []byte blob.
 func (g *Container) Bytes() []byte {
-	if g.Data() != nil {
-		if bytes, err := json.Marshal(g.object); err == nil {
-			return bytes
-		}
+	if bytes, err := json.Marshal(g.Data()); err == nil {
+		return bytes
 	}
-	return []byte("{}")
+	return []byte("null")
 }
 
 // BytesIndent marshals an element to a JSON []byte blob formatted with a prefix
 // and indent string.
 func (g *Container) BytesIndent(prefix string, indent string) []byte {
 	if g.object != nil {
-		if bytes, err := json.MarshalIndent(g.object, prefix, indent); err == nil {
+		if bytes, err := json.MarshalIndent(g.Data(), prefix, indent); err == nil {
 			return bytes
 		}
 	}
-	return []byte("{}")
+	return []byte("null")
 }
 
 // String marshals an element to a JSON formatted string.
@@ -653,7 +632,7 @@ func (g *Container) EncodeJSON(encodeOpts ...EncodeOpt) []byte {
 		opt(encoder)
 	}
 	if err := encoder.Encode(g.object); err != nil {
-		return []byte("{}")
+		return []byte("null")
 	}
 	result := b.Bytes()
 	if len(result) > 0 {
@@ -667,10 +646,10 @@ func New() *Container {
 	return &Container{map[string]interface{}{}}
 }
 
-// Consume an already unmarshalled JSON object (or a new map[string]interface{})
+// Wrap an already unmarshalled JSON object (or a new map[string]interface{})
 // into a *Container.
-func Consume(root interface{}) (*Container, error) {
-	return &Container{root}, nil
+func Wrap(root interface{}) *Container {
+	return &Container{root}
 }
 
 // ParseJSON unmarshals a JSON byte slice into a *Container.

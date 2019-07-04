@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -39,6 +40,46 @@ func TestBasic(t *testing.T) {
 
 	if result := val.Bytes(); string(result) != string(sample) {
 		t.Errorf("Wrong []byte conversion: %s != %s", result, sample)
+	}
+}
+
+func TestNilMethods(t *testing.T) {
+	var n *Container
+	if exp, act := "null", n.String(); exp != act {
+		t.Errorf("Unexpected value: %v != %v", act, exp)
+	}
+	if exp, act := "null", string(n.Bytes()); exp != act {
+		t.Errorf("Unexpected value: %v != %v", act, exp)
+	}
+	if n.Search("foo", "bar") != nil {
+		t.Error("non nil result")
+	}
+	if n.Path("foo.bar") != nil {
+		t.Error("non nil result")
+	}
+	if _, err := n.Array("foo"); err == nil {
+		t.Error("expected error")
+	}
+	if err := n.ArrayAppend("foo", "bar"); err == nil {
+		t.Error("expected error")
+	}
+	if err := n.ArrayRemove(1, "foo", "bar"); err == nil {
+		t.Error("expected error")
+	}
+	if n.Exists("foo", "bar") {
+		t.Error("expected false")
+	}
+	if n.Index(1) != nil {
+		t.Error("non nil result")
+	}
+	if n.Children() != nil {
+		t.Error("non nil result")
+	}
+	if len(n.ChildrenMap()) > 0 {
+		t.Error("non nil result")
+	}
+	if err := n.Delete("foo"); err == nil {
+		t.Error("expected error")
 	}
 }
 
@@ -89,7 +130,7 @@ func TestJSONPointer(t *testing.T) {
 		},
 		{
 			path: "/a/doesnotexist",
-			err:  "failed to resolve JSON pointer: index '1' value 'doesnotexist' was not found",
+			err:  "failed to resolve path segment '1': key 'doesnotexist' was not found",
 		},
 		{
 			path:  "/a",
@@ -133,11 +174,11 @@ func TestJSONPointer(t *testing.T) {
 		},
 		{
 			path: "/c/notindex/value2",
-			err:  `failed to resolve JSON pointer: could not parse index '1' value 'notindex' into array index: strconv.Atoi: parsing "notindex": invalid syntax`,
+			err:  `failed to resolve path segment '1': found array but segment value 'notindex' could not be parsed into array index: strconv.Atoi: parsing "notindex": invalid syntax`,
 		},
 		{
 			path: "/c/10/value2",
-			err:  `failed to resolve JSON pointer: index '1' value '10' exceeded target array size of '5'`,
+			err:  `failed to resolve path segment '1': found array but index '10' exceeded target array size of '5'`,
 		},
 	}
 
@@ -165,6 +206,51 @@ func TestJSONPointer(t *testing.T) {
 				tt.Errorf("Wrong result: %v != %v", act, exp)
 			}
 		})
+	}
+}
+
+func TestArrayWildcard(t *testing.T) {
+	sample := []byte(`{"test":[{"value":10},{"value":20}]}`)
+
+	val, err := ParseJSON(sample)
+	if err != nil {
+		t.Fatalf("Failed to parse: %v", err)
+	}
+
+	if act, ok := val.Search([]string{"test", "0", "value"}...).Data().(float64); ok {
+		if exp := float64(10); !reflect.DeepEqual(act, exp) {
+			t.Errorf("Wrong result: %v != %v", act, exp)
+		}
+	} else {
+		t.Errorf("Didn't find test.0.value")
+	}
+
+	if act, ok := val.Search([]string{"test", "1", "value"}...).Data().(float64); ok {
+		if exp := float64(20); !reflect.DeepEqual(act, exp) {
+			t.Errorf("Wrong result: %v != %v", act, exp)
+		}
+	} else {
+		t.Errorf("Didn't find test.1.value")
+	}
+
+	if act, ok := val.Search([]string{"test", "*", "value"}...).Data().([]interface{}); ok {
+		if exp := []interface{}{float64(10), float64(20)}; !reflect.DeepEqual(act, exp) {
+			t.Errorf("Wrong result: %v != %v", act, exp)
+		}
+	} else {
+		t.Errorf("Didn't find test.*.value")
+	}
+
+	if act := val.Search([]string{"test", "*", "notmatched"}...); act != nil {
+		t.Errorf("Expected nil result, received: %v", act)
+	}
+
+	if act, ok := val.Search([]string{"test", "*"}...).Data().([]interface{}); ok {
+		if exp := []interface{}{map[string]interface{}{"value": float64(10)}, map[string]interface{}{"value": float64(20)}}; !reflect.DeepEqual(act, exp) {
+			t.Errorf("Wrong result: %v != %v", act, exp)
+		}
+	} else {
+		t.Errorf("Didn't find test.*.value")
 	}
 }
 
@@ -222,10 +308,10 @@ func TestExistsWithArrays(t *testing.T) {
 		return
 	}
 
-	if exp, actual := true, val.Exists("foo", "bar", "baz"); exp != actual {
+	if exp, actual := true, val.Exists("foo", "bar", "0", "baz"); exp != actual {
 		t.Errorf("Wrong result from array based Exists: %v != %v", exp, actual)
 	}
-	if exp, actual := false, val.Exists("foo", "bar", "baz_NOPE"); exp != actual {
+	if exp, actual := false, val.Exists("foo", "bar", "1", "baz_NOPE"); exp != actual {
 		t.Errorf("Wrong result from array based Exists: %v != %v", exp, actual)
 	}
 
@@ -236,10 +322,10 @@ func TestExistsWithArrays(t *testing.T) {
 		return
 	}
 
-	if exp, actual := true, val.Exists("foo", "bar", "baz"); exp != actual {
+	if exp, actual := true, val.Exists("foo", "0", "bar", "baz"); exp != actual {
 		t.Errorf("Wrong result from array based Exists: %v != %v", exp, actual)
 	}
-	if exp, actual := false, val.Exists("foo", "bar", "baz_NOPE"); exp != actual {
+	if exp, actual := false, val.Exists("foo", "0", "bar", "baz_NOPE"); exp != actual {
 		t.Errorf("Wrong result from array based Exists: %v != %v", exp, actual)
 	}
 
@@ -251,10 +337,10 @@ func TestExistsWithArrays(t *testing.T) {
 		return
 	}
 
-	if exp, actual := true, val.Exists("foo", "bar", "baz"); exp != actual {
+	if exp, actual := true, val.Exists("0", "foo", "bar", "baz"); exp != actual {
 		t.Errorf("Wrong result from array based Exists: %v != %v", exp, actual)
 	}
-	if exp, actual := false, val.Exists("foo", "bar", "baz_NOPE"); exp != actual {
+	if exp, actual := false, val.Exists("0", "foo", "bar", "baz_NOPE"); exp != actual {
 		t.Errorf("Wrong result from array based Exists: %v != %v", exp, actual)
 	}
 }
@@ -302,64 +388,6 @@ func TestFailureWithDecoder(t *testing.T) {
 	_, err := ParseJSONDecoder(dec)
 	if err == nil {
 		t.Fatal("Expected parsing error")
-	}
-}
-
-func TestFindArray(t *testing.T) {
-	for i, this := range []struct {
-		input  string
-		target string
-		expect string
-	}{
-		{
-			`{"test":{"array":[{"value":1}, {"value":2}, {"value":3}]}}`,
-			"test.array.value",
-			"[1,2,3]",
-		},
-		{
-			`{
-			"test":{
-				"array":[
-						{
-							"values":[
-								{"more":1},
-								{"more":2},
-								{"more":3}
-							]
-						},
-						{
-							"values":[
-								{"more":4},
-								{"more":5},
-								{"more":6}
-							]
-						},
-						{
-							"values":[
-								{"more":7},
-								{"more":8},
-								{"more":9}
-							]
-						}
-					]
-				}
-			}`,
-			"test.array.values.more",
-			"[[1,2,3],[4,5,6],[7,8,9]]",
-		},
-	} {
-		val, err := ParseJSON([]byte(this.input))
-		if err != nil {
-			t.Errorf("[%d] Failed to parse: %s", i, err)
-			return
-		}
-
-		target := val.Path(this.target)
-		result := target.String()
-
-		if this.expect != result {
-			t.Errorf("[%d] Expected %v, received %v", i, this.expect, result)
-		}
 	}
 }
 
@@ -462,11 +490,7 @@ func TestExamples(t *testing.T) {
 
 	expected := []string{"first", "second", "third"}
 
-	children, err := jsonParsed.S("array").Children()
-	if err != nil {
-		t.Errorf("Error: %v", err)
-		return
-	}
+	children := jsonParsed.S("array").Children()
 	for i, child := range children {
 		if expected[i] != child.Data().(string) {
 			t.Errorf("Child unexpected: %v != %v", expected[i], child.Data().(string))
@@ -500,7 +524,7 @@ func TestExamples2(t *testing.T) {
 		t.Errorf("Non matched output: %v != %v", expected, jsonObj.String())
 	}
 
-	jsonObj, _ = Consume(map[string]interface{}{})
+	jsonObj = Wrap(map[string]interface{}{})
 
 	jsonObj.Array("array")
 
@@ -592,7 +616,7 @@ func TestChildren(t *testing.T) {
 		}
 	}`))
 
-	objects, _ := json1.Children()
+	objects := json1.Children()
 	for _, object := range objects {
 		object.Set("hello world", "child")
 	}
@@ -637,7 +661,7 @@ func TestChildren(t *testing.T) {
 			numChildren1, numChildren2)
 	}
 
-	objects, _ = json2.S("values").Children()
+	objects = json2.S("values").Children()
 	for _, object := range objects {
 		object.Set("hello world", "child")
 		json3.ArrayAppend(object.Data(), "values")
@@ -663,12 +687,7 @@ func TestChildrenMap(t *testing.T) {
 		"objectThree":{"num":3}
 	}`))
 
-	objectMap, err := json1.ChildrenMap()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
+	objectMap := json1.ChildrenMap()
 	if len(objectMap) != 3 {
 		t.Errorf("Wrong num of elements in objectMap: %v != %v", len(objectMap), 3)
 		return
@@ -708,11 +727,7 @@ func TestNestedAnonymousArrays(t *testing.T) {
 		]
 	}`))
 
-	childTest, err := json1.S("array").Index(0).Children()
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	childTest := json1.S("array").Index(0).Children()
 
 	if val := childTest[0].Data().(float64); val != 1 {
 		t.Errorf("child test: %v != %v", val, 1)
@@ -802,7 +817,7 @@ func TestArrays(t *testing.T) {
 		obj2.Set(float64(i), "index")
 	}
 
-	children, _ := json2.S("places").Children()
+	children := json2.S("places").Children()
 	for i, obj := range children {
 		if id, ok := obj.S(fmt.Sprintf("object%v", i)).S("index").Data().(float64); ok {
 			if id != float64(i) {
@@ -912,7 +927,7 @@ func TestArraysThree(t *testing.T) {
 
 	test, err := json1.ArrayOfSizeP(1, "test1.test2")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	test.SetIndex(10, 0)
@@ -955,7 +970,7 @@ func TestSetJSONPointer(t *testing.T) {
 			t.Errorf("Failed to parse '%v': %v", test.input, err)
 			continue
 		}
-		if err = gObj.SetJSONPointer(test.value, test.pointer); err != nil {
+		if _, err = gObj.SetJSONPointer(test.value, test.pointer); err != nil {
 			t.Error(err)
 			continue
 		}
@@ -1104,8 +1119,8 @@ func TestInvalid(t *testing.T) {
 	}
 
 	invalidStr := validObj.S("Doesn't exist").String()
-	if "{}" != invalidStr {
-		t.Errorf("expected '{}', received: %v", invalidStr)
+	if "null" != invalidStr {
+		t.Errorf("expected 'null', received: %v", invalidStr)
 	}
 }
 
@@ -1233,21 +1248,6 @@ func BenchmarkDynamic(b *testing.B) {
 		if val := SOSI.S("stringType").Data().(string); val != expected {
 			b.Errorf("Wrong value of SecondOutter.SecondInner.StringType: %v\n", val)
 		}
-	}
-}
-
-func TestNoTypeChildren(t *testing.T) {
-	jsonObj, err := ParseJSON([]byte(`{"not_obj_or_array":1}`))
-	if err != nil {
-		t.Error(err)
-	}
-	exp := ErrNotObjOrArray
-	if _, act := jsonObj.S("not_obj_or_array").Children(); act != exp {
-		t.Errorf("Unexpected value returned: %v != %v", exp, act)
-	}
-	exp = ErrNotObj
-	if _, act := jsonObj.S("not_obj_or_array").ChildrenMap(); act != exp {
-		t.Errorf("Unexpected value returned: %v != %v", exp, act)
 	}
 }
 
