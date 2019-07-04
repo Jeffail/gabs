@@ -18,7 +18,7 @@ Using modules:
 
 ```go
 import (
-	"github.com/Jeffail/gabs/v2
+	"github.com/Jeffail/gabs/v2"
 )
 ```
 
@@ -26,7 +26,7 @@ Without modules:
 
 ```go
 import (
-	gabs "github.com/Jeffail/gabs/v2
+	"github.com/Jeffail/gabs"
 )
 ```
 
