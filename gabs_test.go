@@ -450,6 +450,12 @@ func TestExamples(t *testing.T) {
 			"value1":10,
 			"value2":22
 		},
+		"contains.dots.in.key":{
+			"value1":11
+		},
+		"contains~tildes~in~key":{
+			"value1":12
+		},
 		"alsoInner":{
 			"value1":20,
 			"array1":[
@@ -464,6 +470,16 @@ func TestExamples(t *testing.T) {
 
 	value, ok = jsonParsed.Path("outter.inner.value1").Data().(float64)
 	if value != 10.0 || !ok {
+		t.Errorf("wrong value: %v, %v", value, ok)
+	}
+
+	value, ok = jsonParsed.Path("outter.contains~1dots~1in~1key.value1").Data().(float64)
+	if value != 11.0 || !ok {
+		t.Errorf("wrong value: %v, %v", value, ok)
+	}
+
+	value, ok = jsonParsed.Path("outter.contains~0tildes~0in~0key.value1").Data().(float64)
+	if value != 12.0 || !ok {
 		t.Errorf("wrong value: %v, %v", value, ok)
 	}
 

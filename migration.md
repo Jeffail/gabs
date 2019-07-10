@@ -3,6 +3,10 @@ Migration Guides
 
 ## Migrating to Version 2
 
+### Path
+
+Previously it was not possible to specify a dot path where a key itself contains a dot. In v2 it is now possible with the escape sequence `~1`. For example, given the JSON doc `{"foo":{"bar.baz":10}}`, the path `foo.bar~1baz` would return `10`. This escape sequence means the character `~` is also a special case, therefore it must also be escaped to the sequence `~0`.
+
 ### Consume
 
 Calls to `Consume(root interface{}) (*Container, error)` should be replaced with `Wrap(root interface{}) *Container`.

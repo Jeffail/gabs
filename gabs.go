@@ -94,6 +94,16 @@ func resolveJSONPointerHierarchy(path string) ([]string, error) {
 	return hierarchy, nil
 }
 
+func resolveJSONDotPathHierarchy(path string) []string {
+	hierarchy := strings.Split(path, ".")
+	for i, v := range hierarchy {
+		v = strings.Replace(v, "~1", ".", -1)
+		v = strings.Replace(v, "~0", "~", -1)
+		hierarchy[i] = v
+	}
+	return hierarchy
+}
+
 //------------------------------------------------------------------------------
 
 // Container references a specific element within a wrapped structure.
@@ -162,13 +172,21 @@ func (g *Container) Search(hierarchy ...string) *Container {
 
 // Path searches the wrapped structure following a path in dot notation,
 // segments of this path are searched according to the same rules as Search.
+//
+// Because the characters '~' (%x7E) and '.' (%x2E) have special meanings in
+// gabs paths, '~' needs to be encoded as '~0' and '.' needs to be encoded as
+// '~1' when these characters appear in a reference key.
 func (g *Container) Path(path string) *Container {
-	return g.Search(strings.Split(path, ".")...)
+	return g.Search(resolveJSONDotPathHierarchy(path)...)
 }
 
 // JSONPointer parses a JSON pointer path (https://tools.ietf.org/html/rfc6901)
 // and either returns a *gabs.Container containing the result or an error if the
 // referenced item could not be found.
+//
+// Because the characters '~' (%x7E) and '/' (%x2F) have special meanings in
+// gabs paths, '~' needs to be encoded as '~0' and '/' needs to be encoded as
+// '~1' when these characters appear in a reference key.
 func (g *Container) JSONPointer(path string) (*Container, error) {
 	hierarchy, err := resolveJSONPointerHierarchy(path)
 	if err != nil {
@@ -189,7 +207,7 @@ func (g *Container) Exists(hierarchy ...string) bool {
 
 // ExistsP checks whether a dot notation path exists.
 func (g *Container) ExistsP(path string) bool {
-	return g.Exists(strings.Split(path, ".")...)
+	return g.Exists(resolveJSONDotPathHierarchy(path)...)
 }
 
 // Index attempts to find and return an element within a JSON array by an index.
@@ -293,7 +311,7 @@ func (g *Container) Set(value interface{}, hierarchy ...string) (*Container, err
 // of the path that do not exist will be constructed, and if a collision occurs
 // with a non object type whilst iterating the path an error is returned.
 func (g *Container) SetP(value interface{}, path string) (*Container, error) {
-	return g.Set(value, strings.Split(path, ".")...)
+	return g.Set(value, resolveJSONDotPathHierarchy(path)...)
 }
 
 // SetIndex attempts to set a value of an array element based on an index.
@@ -328,7 +346,7 @@ func (g *Container) Object(hierarchy ...string) (*Container, error) {
 // ObjectP creates a new JSON object at a target path using dot notation.
 // Returns an error if the path contains a collision with a non object type.
 func (g *Container) ObjectP(path string) (*Container, error) {
-	return g.Object(strings.Split(path, ".")...)
+	return g.Object(resolveJSONDotPathHierarchy(path)...)
 }
 
 // ObjectI creates a new JSON object at an array index. Returns an error if the
@@ -346,7 +364,7 @@ func (g *Container) Array(hierarchy ...string) (*Container, error) {
 // ArrayP creates a new JSON array at a path using dot notation. Returns an
 // error if the path contains a collision with a non object type.
 func (g *Container) ArrayP(path string) (*Container, error) {
-	return g.Array(strings.Split(path, ".")...)
+	return g.Array(resolveJSONDotPathHierarchy(path)...)
 }
 
 // ArrayI creates a new JSON array within an array at an index. Returns an error
@@ -366,7 +384,7 @@ func (g *Container) ArrayOfSize(size int, hierarchy ...string) (*Container, erro
 // dot notation. Returns an error if the path contains a collision with a non
 // object type.
 func (g *Container) ArrayOfSizeP(size int, path string) (*Container, error) {
-	return g.ArrayOfSize(size, strings.Split(path, ".")...)
+	return g.ArrayOfSize(size, resolveJSONDotPathHierarchy(path)...)
 }
 
 // ArrayOfSizeI create a new JSON array of a particular size within an array at
@@ -410,7 +428,7 @@ func (g *Container) Delete(hierarchy ...string) error {
 // DeleteP deletes an element at a path using dot notation, an error is returned
 // if the element does not exist.
 func (g *Container) DeleteP(path string) error {
-	return g.Delete(strings.Split(path, ".")...)
+	return g.Delete(resolveJSONDotPathHierarchy(path)...)
 }
 
 // MergeFn merges two objects using a provided function to resolve collisions.
@@ -515,7 +533,7 @@ func (g *Container) ArrayAppend(value interface{}, hierarchy ...string) error {
 // notation. If the target is not a JSON array then it will be converted into
 // one, with its original contents set to the first element of the array.
 func (g *Container) ArrayAppendP(value interface{}, path string) error {
-	return g.ArrayAppend(value, strings.Split(path, ".")...)
+	return g.ArrayAppend(value, resolveJSONDotPathHierarchy(path)...)
 }
 
 // ArrayRemove attempts to remove an element identified by an index from a JSON
@@ -540,7 +558,7 @@ func (g *Container) ArrayRemove(index int, hierarchy ...string) error {
 // ArrayRemoveP attempts to remove an element identified by an index from a JSON
 // array at a path using dot notation.
 func (g *Container) ArrayRemoveP(index int, path string) error {
-	return g.ArrayRemove(index, strings.Split(path, ".")...)
+	return g.ArrayRemove(index, resolveJSONDotPathHierarchy(path)...)
 }
 
 // ArrayElement attempts to access an element by an index from a JSON array at a
@@ -562,7 +580,7 @@ func (g *Container) ArrayElement(index int, hierarchy ...string) (*Container, er
 // ArrayElementP attempts to access an element by an index from a JSON array at
 // a path using dot notation.
 func (g *Container) ArrayElementP(index int, path string) (*Container, error) {
-	return g.ArrayElement(index, strings.Split(path, ".")...)
+	return g.ArrayElement(index, resolveJSONDotPathHierarchy(path)...)
 }
 
 // ArrayCount counts the number of elements in a JSON array at a path.
@@ -576,7 +594,7 @@ func (g *Container) ArrayCount(hierarchy ...string) (int, error) {
 // ArrayCountP counts the number of elements in a JSON array at a path using dot
 // notation.
 func (g *Container) ArrayCountP(path string) (int, error) {
-	return g.ArrayCount(strings.Split(path, ".")...)
+	return g.ArrayCount(resolveJSONDotPathHierarchy(path)...)
 }
 
 //------------------------------------------------------------------------------
