@@ -298,5 +298,5 @@ if err != nil {
 intValue, err := val.Path("test.int").Data().(json.Number).Int64()
 ```
 
-[godoc-url]: https://godoc.org/github.com/Jeffail/gabs/v2
+[godoc-url]: https://godoc.org/github.com/Jeffail/gabs
 [migration-doc]: ./migration.md
