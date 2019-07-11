@@ -6,12 +6,6 @@ Gabs is a small utility for dealing with dynamic or unknown JSON structures in G
 
 If you're migrating from version 1 check out [`migration.md`][migration-doc] for guidance.
 
-## Install
-
-```sh
-go get github.com/Jeffail/gabs/v2
-```
-
 ## Use
 
 ### Import
