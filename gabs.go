@@ -412,17 +412,29 @@ func (g *Container) Delete(hierarchy ...string) error {
 		object = g.Search(hierarchy[:len(hierarchy)-1]...).Data()
 	}
 
-	obj, ok := object.(map[string]interface{})
-	if !ok {
-		return ErrNotObj
+	if obj, ok := object.(map[string]interface{}); ok {
+		if _, ok = obj[target]; !ok {
+			return ErrNotFound
+		}
+		delete(obj, target)
+		return nil
 	}
-
-	if _, ok = obj[target]; !ok {
-		return ErrNotFound
+	if array, ok := object.([]interface{}); ok {
+		if len(hierarchy) < 2 {
+			return errors.New("unable to delete array index at root of path")
+		}
+		index, err := strconv.Atoi(target)
+		if err != nil {
+			return fmt.Errorf("failed to parse array index '%v': %v", target, err)
+		}
+		if index >= len(array) {
+			return ErrOutOfBounds
+		}
+		array = append(array[:index], array[index+1:]...)
+		g.Set(array, hierarchy[:len(hierarchy)-1]...)
+		return nil
 	}
-
-	delete(obj, target)
-	return nil
+	return ErrNotObjOrArray
 }
 
 // DeleteP deletes an element at a path using dot notation, an error is returned
