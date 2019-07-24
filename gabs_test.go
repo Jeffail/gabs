@@ -83,41 +83,43 @@ func TestNilMethods(t *testing.T) {
 	}
 }
 
-func TestJSONPointer(t *testing.T) {
-	sample := []byte(`{
-		"a": {
-			"nested1": {
-				"value1": 5
-			}
-		},
-		"": {
-			"can we access": "this?"
-		},
-		"what/a/pain": "ouch1",
-		"what~a~pain": "ouch2",
-		"what~/a/~pain": "ouch3",
-		"b": 10,
-		"c": [
-			"first",
-			"second",
-			{
-				"nested2": {
-					"value2": 15
-				}
-			},
-			[
-				"fifth",
-				"sixth"
-			],
-			"fourth"
-		],
-		"d": {
-			"": {
-				"what about": "this?"
-			}
+var bigSample = []byte(`{
+	"a": {
+		"nested1": {
+			"value1": 5
 		}
-	}`)
+	},
+	"": {
+		"can we access": "this?"
+	},
+	"what/a/pain": "ouch1",
+	"what~a~pain": "ouch2",
+	"what~/a/~pain": "ouch3",
+	"what.a.pain": "ouch4",
+	"what~.a.~pain": "ouch5",
+	"b": 10,
+	"c": [
+		"first",
+		"second",
+		{
+			"nested2": {
+				"value2": 15
+			}
+		},
+		[
+			"fifth",
+			"sixth"
+		],
+		"fourth"
+	],
+	"d": {
+		"": {
+			"what about": "this?"
+		}
+	}
+}`)
 
+func TestJSONPointer(t *testing.T) {
 	type testCase struct {
 		path  string
 		value string
@@ -147,6 +149,14 @@ func TestJSONPointer(t *testing.T) {
 		{
 			path:  "/what~0~1a~1~0pain",
 			value: `"ouch3"`,
+		},
+		{
+			path:  "/what.a.pain",
+			value: `"ouch4"`,
+		},
+		{
+			path:  "/what~0.a.~0pain",
+			value: `"ouch5"`,
 		},
 		{
 			path:  "/",
@@ -182,7 +192,7 @@ func TestJSONPointer(t *testing.T) {
 		},
 	}
 
-	root, err := ParseJSON(sample)
+	root, err := ParseJSON(bigSample)
 	if err != nil {
 		t.Fatalf("Failed to parse: %v", err)
 	}
@@ -202,6 +212,93 @@ func TestJSONPointer(t *testing.T) {
 				tt.Error(err)
 				return
 			}
+			if exp, act := test.value, result.String(); exp != act {
+				tt.Errorf("Wrong result: %v != %v", act, exp)
+			}
+		})
+	}
+}
+
+func TestDotPath(t *testing.T) {
+	type testCase struct {
+		path  string
+		value string
+	}
+	tests := []testCase{
+		{
+			path:  "foo",
+			value: "null",
+		},
+		{
+			path:  "a.doesnotexist",
+			value: "null",
+		},
+		{
+			path:  "a",
+			value: `{"nested1":{"value1":5}}`,
+		},
+		{
+			path:  "what/a/pain",
+			value: `"ouch1"`,
+		},
+		{
+			path:  "what~0a~0pain",
+			value: `"ouch2"`,
+		},
+		{
+			path:  "what~0/a/~0pain",
+			value: `"ouch3"`,
+		},
+		{
+			path:  "what~1a~1pain",
+			value: `"ouch4"`,
+		},
+		{
+			path:  "what~0~1a~1~0pain",
+			value: `"ouch5"`,
+		},
+		{
+			path:  "",
+			value: `{"can we access":"this?"}`,
+		},
+		{
+			path:  ".can we access",
+			value: `"this?"`,
+		},
+		{
+			path:  "d.",
+			value: `{"what about":"this?"}`,
+		},
+		{
+			path:  "d..what about",
+			value: `"this?"`,
+		},
+		{
+			path:  "c.1",
+			value: `"second"`,
+		},
+		{
+			path:  "c.2.nested2.value2",
+			value: `15`,
+		},
+		{
+			path:  "c.notindex.value2",
+			value: "null",
+		},
+		{
+			path:  "c.10.value2",
+			value: "null",
+		},
+	}
+
+	root, err := ParseJSON(bigSample)
+	if err != nil {
+		t.Fatalf("Failed to parse: %v", err)
+	}
+
+	for _, test := range tests {
+		t.Run(test.path, func(tt *testing.T) {
+			result := root.Path(test.path)
 			if exp, act := test.value, result.String(); exp != act {
 				tt.Errorf("Wrong result: %v != %v", act, exp)
 			}
@@ -251,6 +348,33 @@ func TestArrayWildcard(t *testing.T) {
 		}
 	} else {
 		t.Errorf("Didn't find test.*.value")
+	}
+}
+
+func TestArrayAppendWithSet(t *testing.T) {
+	gObj := New()
+	if _, err := gObj.Set([]interface{}{}, "foo"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gObj.Set(1, "foo", "-"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gObj.Set([]interface{}{}, "foo", "-", "baz"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gObj.Set(2, "foo", "1", "baz", "-"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gObj.Set(3, "foo", "1", "baz", "-"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gObj.Set(4, "foo", "-"); err != nil {
+		t.Fatal(err)
+	}
+
+	exp := `{"foo":[1,{"baz":[2,3]},4]}`
+	if act := gObj.String(); act != exp {
+		t.Errorf("Unexpected value: %v != %v", act, exp)
 	}
 }
 
@@ -467,7 +591,7 @@ func TestDeletesWithArrays(t *testing.T) {
 			}
 		]
 	}`
-	
+
 	jsonParsed, err := ParseJSON([]byte(rawJSON))
 	if err != nil {
 		t.Fatal(err)
@@ -615,6 +739,28 @@ func TestExamples(t *testing.T) {
 		if expected[i] != child.Data().(string) {
 			t.Errorf("Child unexpected: %v != %v", expected[i], child.Data().(string))
 		}
+	}
+}
+
+func TestSetAppendArray(t *testing.T) {
+	content := []byte(`{
+	"nested": {
+		"source": [
+			"foo", "bar"
+		]
+	}
+}`)
+
+	gObj, err := ParseJSON(content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = gObj.Set("baz", "nested", "source", "-"); err != nil {
+		t.Fatal(err)
+	}
+	exp := `{"nested":{"source":["foo","bar","baz"]}}`
+	if act := gObj.String(); act != exp {
+		t.Errorf("Wrong result: %v != %v", act, exp)
 	}
 }
 

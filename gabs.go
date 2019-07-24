@@ -162,9 +162,12 @@ func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Cont
 }
 
 // Search attempts to find and return an object within the wrapped structure by
-// following a provided hierarchy of field names to locate the target. If the
-// search encounters an array then the next hierarchy field name is interpretted
-// as an integer index.
+// following a provided hierarchy of field names to locate the target.
+//
+// If the search encounters an array then the next hierarchy field name must be
+// either a an integer which is interpreted as the index of the target, or the
+// character '*', in which case all elements are searched with the remaining
+// search hierarchy and the results returned within an array.
 func (g *Container) Search(hierarchy ...string) *Container {
 	c, _ := g.searchStrict(true, hierarchy...)
 	return c
@@ -260,9 +263,13 @@ func (g *Container) ChildrenMap() map[string]*Container {
 
 // Set attempts to set the value of a field located by a hierarchy of field
 // names. If the search encounters an array then the next hierarchy field name
-// is interpretted as an integer index. Any parts of the hierarchy that do not
-// exist will be constructed as objects. Returns a container of the new value or
-// an error.
+// is interpreted as an integer index of an existing element, or the character
+// '-', which indicates a new element appended to the end of the array.
+//
+// Any parts of the hierarchy that do not exist will be constructed as objects.
+// This includes parts that could be interpreted as array indexes.
+//
+// Returns a container of the new value or an error.
 func (g *Container) Set(value interface{}, hierarchy ...string) (*Container, error) {
 	if g == nil {
 		return nil, errors.New("failed to resolve path, container is nil")
@@ -287,18 +294,33 @@ func (g *Container) Set(value interface{}, hierarchy ...string) (*Container, err
 				object = mmap[pathSeg]
 			}
 		} else if marray, ok := object.([]interface{}); ok {
-			index, err := strconv.Atoi(pathSeg)
-			if err != nil {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but segment value '%v' could not be parsed into array index: %v", target, pathSeg, err)
-			}
-			if len(marray) <= index {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
-			}
-			if target == len(hierarchy)-1 {
-				object = value
-				marray[index] = object
-			} else if object = marray[index]; object == nil {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': field '%v' was not found", target, pathSeg)
+			if pathSeg == "-" {
+				if target < 1 {
+					return nil, errors.New("unable to append new array index at root of path")
+				}
+				if target == len(hierarchy)-1 {
+					object = value
+				} else {
+					object = map[string]interface{}{}
+				}
+				marray = append(marray, object)
+				if _, err := g.Set(marray, hierarchy[:target]...); err != nil {
+					return nil, err
+				}
+			} else {
+				index, err := strconv.Atoi(pathSeg)
+				if err != nil {
+					return nil, fmt.Errorf("failed to resolve path segment '%v': found array but segment value '%v' could not be parsed into array index: %v", target, pathSeg, err)
+				}
+				if len(marray) <= index {
+					return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
+				}
+				if target == len(hierarchy)-1 {
+					object = value
+					marray[index] = object
+				} else if object = marray[index]; object == nil {
+					return nil, fmt.Errorf("failed to resolve path segment '%v': field '%v' was not found", target, pathSeg)
+				}
 			}
 		} else {
 			return nil, ErrPathCollision
