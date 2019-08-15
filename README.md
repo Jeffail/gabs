@@ -122,7 +122,7 @@ jsonParsed, err := gabs.ParseJSON([]byte(`{"array":[{"value":1},{"value":2},{"va
 if err != nil {
 	panic(err)
 }
-fmt.Println(jsonParsed.Path("array.value.1").String())
+fmt.Println(jsonParsed.Path("array.1.value").String())
 ```
 
 Will print `2`.
