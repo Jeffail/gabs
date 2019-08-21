@@ -1,6 +1,6 @@
 ![Gabs](gabs_logo.png "Gabs")
 
-[![godoc for Jeffail/gabs][godoc-badge]][godoc-url]
+[![godoc for Jeffail/gabs][godoc-badge]][godoc-url] [![fuzzit](https://app.fuzzit.dev/badge?org_id=Jeffail)](https://app.fuzzit.dev/orgs/Jeffail/dashboard)
 
 Gabs is a small utility for dealing with dynamic or unknown JSON structures in Go. It's pretty much just a helpful wrapper for navigating hierarchies of `map[string]interface{}` objects provided by the `encoding/json` package. It does nothing spectacular apart from being fabulous.
 
