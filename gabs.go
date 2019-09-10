@@ -663,6 +663,33 @@ func (g *Container) StringIndent(prefix string, indent string) string {
 	return string(g.BytesIndent(prefix, indent))
 }
 
+// AllPaths returns all the resolvable paths beneath this *Container
+func allPaths(prefix string, root map[string]interface{}) (paths []string) {
+	for k, v := range root {
+		var path string
+		if prefix == "" {
+			path = k
+		} else {
+			path = prefix + "." + k
+		}
+
+		if obj, ok := v.(map[string]interface{}); ok {
+			paths = append(paths, allPaths(path, obj)...)
+		} else {
+			paths = append(paths, path)
+		}
+	}
+	return
+}
+
+// AllPaths returns all the resolvable paths beneath this *Container
+func (g *Container) AllPaths() (paths []string) {
+	if obj, ok := g.object.(map[string]interface{}); ok {
+		paths = allPaths("", obj)
+	}
+	return
+}
+
 // EncodeOpt is a functional option for the EncodeJSON method.
 type EncodeOpt func(e *json.Encoder)
 
