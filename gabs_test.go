@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"strings"
 	"testing"
@@ -1683,10 +1682,16 @@ func TestMarshalsJSON(t *testing.T) {
 	sample := []byte(`{"test":{"value":10},"test2":20}`)
 
 	val, err := ParseJSON(sample)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	marshaled, err := json.Marshal(val)
-	assert.NoError(t, err)
-	fmt.Println(marshaled)
-	assert.Equal(t, sample, marshaled)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if exp, act := string(sample), string(marshaled); exp != act {
+		t.Errorf("Unexpected result: %v != %v", act, exp)
+	}
 }
