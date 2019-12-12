@@ -774,4 +774,11 @@ func ParseJSONBuffer(buffer io.Reader) (*Container, error) {
 	return &gabs, nil
 }
 
+// MarshalJson returns the JSON encoding of this container. This allows
+// structs which contain Container instances to be marshaled using
+// json.Marshal().
+func (g *Container) MarshalJSON() ([]byte, error) {
+	return json.Marshal(g.Data())
+}
+
 //------------------------------------------------------------------------------
