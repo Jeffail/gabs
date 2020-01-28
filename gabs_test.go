@@ -828,6 +828,97 @@ func TestExamples3(t *testing.T) {
 	}
 }
 
+func TestArrayConcat(t *testing.T) {
+	jsonObj := New()
+
+	jsonObj.ArrayP("foo.array")
+
+	jsonObj.ArrayConcat(10, "foo", "array")
+	jsonObj.ArrayConcat([]interface{}{20,30}, "foo", "array")
+
+	result := jsonObj.String()
+	expected := `{"foo":{"array":[10,20,30]}}`
+
+	if result != expected {
+		t.Errorf("Non matched output: %v != %v", result, expected)
+	}
+
+	jsonObj = New()
+
+	jsonObj.ArrayP("foo.array")
+
+	jsonObj.ArrayConcat([]interface{}{10,20}, "foo", "array")
+	jsonObj.ArrayConcat(30, "foo", "array")
+
+	result = jsonObj.String()
+	expected = `{"foo":{"array":[10,20,30]}}`
+
+	if result != expected {
+		t.Errorf("Non matched output: %v != %v", result, expected)
+	}
+
+	jsonObj = New()
+
+	jsonObj.ArrayP("foo.array")
+
+	jsonObj.ArrayConcat([]interface{}{10}, "foo", "array")
+	jsonObj.ArrayConcat([]interface{}{20}, "foo", "array")
+	jsonObj.ArrayConcat([]interface{}{30}, "foo", "array")
+
+	result = jsonObj.String()
+	expected = `{"foo":{"array":[10,20,30]}}`
+
+	if result != expected {
+		t.Errorf("Non matched output: %v != %v", result, expected)
+	}
+}
+
+
+func TestArrayConcatP(t *testing.T) {
+	jsonObj := New()
+
+	jsonObj.ArrayP("foo.array")
+
+	jsonObj.ArrayConcatP(10, "foo.array")
+	jsonObj.ArrayConcatP([]interface{}{20,30}, "foo.array")
+
+	result := jsonObj.String()
+	expected := `{"foo":{"array":[10,20,30]}}`
+
+	if result != expected {
+		t.Errorf("Non matched output: %v != %v", result, expected)
+	}
+
+	jsonObj = New()
+
+	jsonObj.ArrayP("foo.array")
+
+	jsonObj.ArrayConcatP([]interface{}{10,20}, "foo.array")
+	jsonObj.ArrayConcatP(30, "foo.array")
+
+	result = jsonObj.String()
+	expected = `{"foo":{"array":[10,20,30]}}`
+
+	if result != expected {
+		t.Errorf("Non matched output: %v != %v", result, expected)
+	}
+
+	jsonObj = New()
+
+	jsonObj.ArrayP("foo.array")
+
+	jsonObj.ArrayConcatP([]interface{}{10}, "foo.array")
+	jsonObj.ArrayConcatP([]interface{}{20}, "foo.array")
+	jsonObj.ArrayConcatP([]interface{}{30}, "foo.array")
+
+	result = jsonObj.String()
+	expected = `{"foo":{"array":[10,20,30]}}`
+
+	if result != expected {
+		t.Errorf("Non matched output: %v != %v", result, expected)
+	}
+}
+
 func TestDotNotation(t *testing.T) {
 	sample := []byte(`{"test":{"inner":{"value":10}},"test2":20}`)
 
