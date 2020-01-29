@@ -620,7 +620,7 @@ func (g *Container) ArrayConcat(value interface{}, hierarchy ...string) error {
 // notation. If the target is not a JSON array then it will be converted into one,
 // with its original contents set to the first element of the array.
 //
-// ArrayConcatP differs from ArrayConcatP in that it will expand a []interface{}
+// ArrayConcatP differs from ArrayAppendP in that it will expand a []interface{}
 // during the append operation, resulting in concatenation of each element, rather
 // than an append as a single element of []interface{}
 func (g *Container) ArrayConcatP(value interface{}, path string) error {
