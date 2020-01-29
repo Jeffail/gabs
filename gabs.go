@@ -582,6 +582,51 @@ func (g *Container) ArrayAppendP(value interface{}, path string) error {
 	return g.ArrayAppend(value, DotPathToSlice(path)...)
 }
 
+// ArrayAppend attempts to append a value onto a JSON array at a path. If the
+// target is not a JSON array then it will be converted into one, with its
+// original contents set to the first element of the array.
+//
+// ArrayConcat differs from ArrayAppend in that it will expand a []interface{}
+// during the append operation, resulting in concatenation of each element, rather
+// than an append as a single element of []interface{}
+func (g *Container) ArrayConcat(value interface{}, hierarchy ...string) error {
+	var array []interface{}
+	if d := g.Search(hierarchy...).Data(); d != nil {
+		if _, ok := d.([]interface{}); !ok {
+			// If the data exists, and it is not a slice of interface,
+			// append it as the first element of our new array.
+			array = append(array, d)
+		} else {
+			// If the data exists, and it is a slice of interface,
+			// assign it to our variable.
+			array = d.([]interface{})
+		}
+	}
+
+	switch v := value.(type) {
+	case []interface{}:
+		// If we have been given a slice of interface, expand it when appending.
+		array = append(array, v...)
+	default:
+		array = append(array, v)
+	}
+
+	_, err := g.Set(array, hierarchy...)
+
+	return err
+}
+
+// ArrayConcatP attempts to append a value onto a JSON array at a path using dot
+// notation. If the target is not a JSON array then it will be converted into one,
+// with its original contents set to the first element of the array.
+//
+// ArrayConcatP differs from ArrayAppendP in that it will expand a []interface{}
+// during the append operation, resulting in concatenation of each element, rather
+// than an append as a single element of []interface{}
+func (g *Container) ArrayConcatP(value interface{}, path string) error {
+	return g.ArrayConcat(value, DotPathToSlice(path)...)
+}
+
 // ArrayRemove attempts to remove an element identified by an index from a JSON
 // array at a path.
 func (g *Container) ArrayRemove(index int, hierarchy ...string) error {
