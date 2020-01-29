@@ -582,24 +582,24 @@ func (g *Container) ArrayAppendP(value interface{}, path string) error {
 	return g.ArrayAppend(value, DotPathToSlice(path)...)
 }
 
-// ArrayAppend attempts to append a value onto a JSON array at a path. If the
+// ArrayConcat attempts to append a value onto a JSON array at a path. If the
 // target is not a JSON array then it will be converted into one, with its
 // original contents set to the first element of the array.
 //
-// ArrayConcat differs from ArrayAppend in that it will expand a []interface{}
-// during the append operation, resulting in concatenation of each element, rather
-// than an append as a single element of []interface{}
+// ArrayConcat differs from ArrayAppend in that it will expand a value type
+// []interface{} during the append operation, resulting in concatenation of each
+// element, rather than append as a single element of []interface{}.
 func (g *Container) ArrayConcat(value interface{}, hierarchy ...string) error {
 	var array []interface{}
 	if d := g.Search(hierarchy...).Data(); d != nil {
-		if _, ok := d.([]interface{}); !ok {
+		if targetArray, ok := d.([]interface{}); !ok {
 			// If the data exists, and it is not a slice of interface,
 			// append it as the first element of our new array.
 			array = append(array, d)
 		} else {
 			// If the data exists, and it is a slice of interface,
 			// assign it to our variable.
-			array = d.([]interface{})
+			array = targetArray
 		}
 	}
 
@@ -620,9 +620,9 @@ func (g *Container) ArrayConcat(value interface{}, hierarchy ...string) error {
 // notation. If the target is not a JSON array then it will be converted into one,
 // with its original contents set to the first element of the array.
 //
-// ArrayConcatP differs from ArrayAppendP in that it will expand a []interface{}
-// during the append operation, resulting in concatenation of each element, rather
-// than an append as a single element of []interface{}
+// ArrayConcatP differs from ArrayAppendP in that it will expand a value type
+// []interface{} during the append operation, resulting in concatenation of each
+// element, rather than append as a single element of []interface{}.
 func (g *Container) ArrayConcatP(value interface{}, path string) error {
 	return g.ArrayConcat(value, DotPathToSlice(path)...)
 }
