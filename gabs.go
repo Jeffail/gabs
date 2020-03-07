@@ -690,6 +690,62 @@ func (g *Container) ArrayCountP(path string) (int, error) {
 
 //------------------------------------------------------------------------------
 
+func walkObject(path string, obj map[string]interface{}, flat map[string]interface{}) {
+	for elePath, v := range obj {
+		if len(path) > 0 {
+			elePath = path + "." + elePath
+		}
+		switch t := v.(type) {
+		case map[string]interface{}:
+			walkObject(elePath, t, flat)
+		case []interface{}:
+			walkArray(elePath, t, flat)
+		default:
+			flat[elePath] = t
+		}
+	}
+}
+
+func walkArray(path string, arr []interface{}, flat map[string]interface{}) {
+	for i, ele := range arr {
+		elePath := strconv.Itoa(i)
+		if len(path) > 0 {
+			elePath = path + "." + elePath
+		}
+		switch t := ele.(type) {
+		case map[string]interface{}:
+			walkObject(elePath, t, flat)
+		case []interface{}:
+			walkArray(elePath, t, flat)
+		default:
+			flat[elePath] = t
+		}
+	}
+}
+
+// Flatten a JSON array or object into an object of key/value pairs for each
+// field, where the key is the full path of the structured field in dot path
+// notation matching the spec for the method Path.
+//
+// E.g. the structure `{"foo":[{"bar":"1"},{"bar":"2"}]}` would flatten into the
+// object: `{"foo.0.bar":"1","foo.1.bar":"2"}`.
+//
+// Returns an error if the target is not a JSON object or array.
+func (g *Container) Flatten() (map[string]interface{}, error) {
+	flattened := map[string]interface{}{}
+	switch t := g.Data().(type) {
+	case map[string]interface{}:
+		walkObject("", t, flattened)
+	case []interface{}:
+		walkArray("", t, flattened)
+	default:
+		return nil, ErrNotObjOrArray
+	}
+	return flattened, nil
+}
+
+//------------------------------------------------------------------------------
+
 // Bytes marshals an element to a JSON []byte blob.
 func (g *Container) Bytes() []byte {
 	if bytes, err := json.Marshal(g.Data()); err == nil {

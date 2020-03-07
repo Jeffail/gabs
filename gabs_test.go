@@ -834,7 +834,7 @@ func TestArrayConcat(t *testing.T) {
 	jsonObj.ArrayP("foo.array")
 
 	jsonObj.ArrayConcat(10, "foo", "array")
-	jsonObj.ArrayConcat([]interface{}{20,30}, "foo", "array")
+	jsonObj.ArrayConcat([]interface{}{20, 30}, "foo", "array")
 
 	result := jsonObj.String()
 	expected := `{"foo":{"array":[10,20,30]}}`
@@ -847,7 +847,7 @@ func TestArrayConcat(t *testing.T) {
 
 	jsonObj.ArrayP("foo.array")
 
-	jsonObj.ArrayConcat([]interface{}{10,20}, "foo", "array")
+	jsonObj.ArrayConcat([]interface{}{10, 20}, "foo", "array")
 	jsonObj.ArrayConcat(30, "foo", "array")
 
 	result = jsonObj.String()
@@ -873,14 +873,13 @@ func TestArrayConcat(t *testing.T) {
 	}
 }
 
-
 func TestArrayConcatP(t *testing.T) {
 	jsonObj := New()
 
 	jsonObj.ArrayP("foo.array")
 
 	jsonObj.ArrayConcatP(10, "foo.array")
-	jsonObj.ArrayConcatP([]interface{}{20,30}, "foo.array")
+	jsonObj.ArrayConcatP([]interface{}{20, 30}, "foo.array")
 
 	result := jsonObj.String()
 	expected := `{"foo":{"array":[10,20,30]}}`
@@ -893,7 +892,7 @@ func TestArrayConcatP(t *testing.T) {
 
 	jsonObj.ArrayP("foo.array")
 
-	jsonObj.ArrayConcatP([]interface{}{10,20}, "foo.array")
+	jsonObj.ArrayConcatP([]interface{}{10, 20}, "foo.array")
 	jsonObj.ArrayConcatP(30, "foo.array")
 
 	result = jsonObj.String()
@@ -1784,5 +1783,45 @@ func TestMarshalsJSON(t *testing.T) {
 
 	if exp, act := string(sample), string(marshaled); exp != act {
 		t.Errorf("Unexpected result: %v != %v", act, exp)
+	}
+}
+
+func TestFlatten(t *testing.T) {
+	type testCase struct {
+		input  string
+		output string
+	}
+	tests := []testCase{
+		{
+			input:  `{"foo":{"bar":"baz"}}`,
+			output: `{"foo.bar":"baz"}`,
+		},
+		{
+			input:  `{"foo":[{"bar":"1"},{"bar":"2"}]}`,
+			output: `{"foo.0.bar":"1","foo.1.bar":"2"}`,
+		},
+		{
+			input:  `[{"bar":"1"},{"bar":"2"}]`,
+			output: `{"0.bar":"1","1.bar":"2"}`,
+		},
+		{
+			input:  `[["1"],["2","3"]]`,
+			output: `{"0.0":"1","1.0":"2","1.1":"3"}`,
+		},
+	}
+
+	for _, test := range tests {
+		gObj, err := ParseJSON([]byte(test.input))
+		if err != nil {
+			t.Fatalf("Failed to parse '%v': %v", test.input, err)
+		}
+		var res map[string]interface{}
+		if res, err = gObj.Flatten(); err != nil {
+			t.Error(err)
+			continue
+		}
+		if exp, act := test.output, Wrap(res).String(); exp != act {
+			t.Errorf("Wrong result: %v != %v", act, exp)
+		}
 	}
 }
