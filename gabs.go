@@ -162,6 +162,9 @@ func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Cont
 			if err != nil {
 				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but segment value '%v' could not be parsed into array index: %v", target, pathSeg, err)
 			}
+			if index < 0 {
+				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' is invalid", target, pathSeg)
+			}
 			if len(marray) <= index {
 				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
 			}
@@ -324,6 +327,9 @@ func (g *Container) Set(value interface{}, hierarchy ...string) (*Container, err
 				if err != nil {
 					return nil, fmt.Errorf("failed to resolve path segment '%v': found array but segment value '%v' could not be parsed into array index: %v", target, pathSeg, err)
 				}
+				if index < 0 {
+					return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' is invalid", target, pathSeg)
+				}
 				if len(marray) <= index {
 					return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
 				}
@@ -462,6 +468,9 @@ func (g *Container) Delete(hierarchy ...string) error {
 			return fmt.Errorf("failed to parse array index '%v': %v", target, err)
 		}
 		if index >= len(array) {
+			return ErrOutOfBounds
+		}
+		if index < 0 {
 			return ErrOutOfBounds
 		}
 		array = append(array[:index], array[index+1:]...)
