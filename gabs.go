@@ -700,6 +700,10 @@ func (g *Container) ArrayCountP(path string) (int, error) {
 //------------------------------------------------------------------------------
 
 func walkObject(path string, obj map[string]interface{}, flat map[string]interface{}) {
+	if len(obj) == 0 {
+		flat[path] = struct{}{}
+	}
+
 	for elePath, v := range obj {
 		if len(path) > 0 {
 			elePath = path + "." + elePath
