@@ -720,6 +720,9 @@ func walkObject(path string, obj map[string]interface{}, flat map[string]interfa
 }
 
 func walkArray(path string, arr []interface{}, flat map[string]interface{}) {
+	if len(arr) == 0 {
+		flat[path] = []struct{}{}
+	}
 	for i, ele := range arr {
 		elePath := strconv.Itoa(i)
 		if len(path) > 0 {

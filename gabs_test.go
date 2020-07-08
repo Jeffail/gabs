@@ -1816,6 +1816,10 @@ func TestFlatten(t *testing.T) {
 			input:  `{"foo":{"bar":{}}}`,
 			output: `{"foo.bar":{}}`,
 		},
+		{
+			input:  `{"foo":{"bar":[]}}`,
+			output: `{"foo.bar":[]}`,
+		},
 	}
 
 	for _, test := range tests {
