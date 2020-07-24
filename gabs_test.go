@@ -1814,6 +1814,58 @@ func TestFlatten(t *testing.T) {
 		},
 		{
 			input:  `{"foo":{"bar":{}}}`,
+			output: `{}`,
+		},
+		{
+			input:  `{"foo":{"bar":[]}}`,
+			output: `{}`,
+		},
+	}
+
+	for _, test := range tests {
+		gObj, err := ParseJSON([]byte(test.input))
+		if err != nil {
+			t.Fatalf("Failed to parse '%v': %v", test.input, err)
+		}
+		var res map[string]interface{}
+		if res, err = gObj.Flatten(); err != nil {
+			t.Error(err)
+			continue
+		}
+		if exp, act := test.output, Wrap(res).String(); exp != act {
+			t.Errorf("Wrong result: %v != %v", act, exp)
+		}
+	}
+}
+
+func TestFlattenIncludeEmpty(t *testing.T) {
+	type testCase struct {
+		input  string
+		output string
+	}
+	tests := []testCase{
+		{
+			input:  `{"foo":{"bar":"baz"}}`,
+			output: `{"foo.bar":"baz"}`,
+		},
+		{
+			input:  `{"foo":[{"bar":"1"},{"bar":"2"}]}`,
+			output: `{"foo.0.bar":"1","foo.1.bar":"2"}`,
+		},
+		{
+			input:  `[{"bar":"1"},{"bar":"2"}]`,
+			output: `{"0.bar":"1","1.bar":"2"}`,
+		},
+		{
+			input:  `[["1"],["2","3"]]`,
+			output: `{"0.0":"1","1.0":"2","1.1":"3"}`,
+		},
+		{
+			input:  `{"foo":{"bar":null}}`,
+			output: `{"foo.bar":null}`,
+		},
+		{
+			input:  `{"foo":{"bar":{}}}`,
 			output: `{"foo.bar":{}}`,
 		},
 		{
@@ -1828,7 +1880,7 @@ func TestFlatten(t *testing.T) {
 			t.Fatalf("Failed to parse '%v': %v", test.input, err)
 		}
 		var res map[string]interface{}
-		if res, err = gObj.Flatten(); err != nil {
+		if res, err = gObj.FlattenIncludeEmpty(); err != nil {
 			t.Error(err)
 			continue
 		}
