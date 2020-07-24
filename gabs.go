@@ -738,19 +738,6 @@ func walkArray(path string, arr []interface{}, flat map[string]interface{}, incl
 	}
 }
 
-func (g *Container) flatten(includeEmpty bool) (map[string]interface{}, error) {
-	flattened := map[string]interface{}{}
-	switch t := g.Data().(type) {
-	case map[string]interface{}:
-		walkObject("", t, flattened, includeEmpty)
-	case []interface{}:
-		walkArray("", t, flattened, includeEmpty)
-	default:
-		return nil, ErrNotObjOrArray
-	}
-	return flattened, nil
-}
-
 // Flatten a JSON array or object into an object of key/value pairs for each
 // field, where the key is the full path of the structured field in dot path
 // notation matching the spec for the method Path.
@@ -775,6 +762,19 @@ func (g *Container) Flatten() (map[string]interface{}, error) {
 // Returns an error if the target is not a JSON object or array.
 func (g *Container) FlattenIncludeEmpty() (map[string]interface{}, error) {
 	return g.flatten(true)
+}
+
+func (g *Container) flatten(includeEmpty bool) (map[string]interface{}, error) {
+	flattened := map[string]interface{}{}
+	switch t := g.Data().(type) {
+	case map[string]interface{}:
+		walkObject("", t, flattened, includeEmpty)
+	case []interface{}:
+		walkArray("", t, flattened, includeEmpty)
+	default:
+		return nil, ErrNotObjOrArray
+	}
+	return flattened, nil
 }
 
 //------------------------------------------------------------------------------
