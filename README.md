@@ -86,7 +86,7 @@ if err != nil {
 
 // S is shorthand for Search
 for key, child := range jsonParsed.S("object").ChildrenMap() {
-	fmt.Printf("key: %v, value: %v\n", key, child.Data().(string))
+	fmt.Printf("key: %v, value: %v\n", key, child.Data().(float64))
 }
 ```
 
