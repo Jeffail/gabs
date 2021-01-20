@@ -103,9 +103,9 @@ func JSONPointerToSlice(path string) ([]string, error) {
 
 // DotPathToSlice returns a slice of path segments parsed out of a dot path.
 //
-// Because the characters '~' (%x7E) and '.' (%x2E) have special meanings in
-// gabs paths, '~' needs to be encoded as '~0' and '.' needs to be encoded as
-// '~1' when these characters appear in a reference key.
+// Because '.' (%x2E) is the segment separator, it must be encoded as '~1'
+// if it appears in the reference key. Likewise, '~' (%x7E) must be encoded
+// as '~0' since it is the escape character for encoding '.'.
 func DotPathToSlice(path string) []string {
 	hierarchy := strings.Split(path, ".")
 	for i, v := range hierarchy {
