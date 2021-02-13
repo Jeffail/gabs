@@ -669,6 +669,19 @@ func TestDeletesWithArrays(t *testing.T) {
 	if actual := jsonParsed.String(); actual != expected {
 		t.Errorf("Unexpected result from array deletes: %v != %v", actual, expected)
 	}
+
+	jsonParsed, err = ParseJSON([]byte(rawJSON))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = jsonParsed.Delete("outter", "*", "bar"); err != nil {
+		t.Error(err)
+	}
+
+	expected = `{"outter":[{"foo":{"value1":10,"value2":22,"value3":32}},{"baz":{"value1":null,"value2":null,"value3":null}}]}`
+	if actual := jsonParsed.String(); actual != expected {
+		t.Errorf("Unexpected result from array deletes: %v != %v", actual, expected)
+	}
 }
 
 func TestExamples(t *testing.T) {

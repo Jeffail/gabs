@@ -463,6 +463,17 @@ func (g *Container) Delete(hierarchy ...string) error {
 		if len(hierarchy) < 2 {
 			return errors.New("unable to delete array index at root of path")
 		}
+
+		// delete within one nested wildcard level
+		if hierarchy[1] == "*" {
+			for i := range array {
+				if obj, ok := array[i].(map[string]interface{}); ok {
+					delete(obj, target)
+				}
+			}
+			return nil
+		}
+
 		index, err := strconv.Atoi(target)
 		if err != nil {
 			return fmt.Errorf("failed to parse array index '%v': %v", target, err)
