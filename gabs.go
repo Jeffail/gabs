@@ -86,11 +86,14 @@ var (
 // gabs paths, '~' needs to be encoded as '~0' and '/' needs to be encoded as
 // '~1' when these characters appear in a reference key.
 func JSONPointerToSlice(path string) ([]string, error) {
-	if len(path) < 1 {
-		return nil, errors.New("failed to resolve JSON pointer: path must not be empty")
+	if len(path) == 0 {
+		return nil, nil
 	}
 	if path[0] != '/' {
 		return nil, errors.New("failed to resolve JSON pointer: path must begin with '/'")
+	}
+	if path == "/" {
+		return []string{""}, nil
 	}
 	hierarchy := strings.Split(path, "/")[1:]
 	for i, v := range hierarchy {

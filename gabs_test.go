@@ -124,11 +124,27 @@ func TestJSONPointer(t *testing.T) {
 		path  string
 		value string
 		err   string
+		input string
 	}
 	tests := []testCase{
 		{
 			path: "foo",
 			err:  "failed to resolve JSON pointer: path must begin with '/'",
+		},
+		{
+			path:  "",
+			value: `{"whole":{"document":"is this"}}`,
+			input: `{"whole":{"document":"is this"}}`,
+		},
+		{
+			path:  "/",
+			value: `{"":{"b":"value b"},"a":"value a"}`,
+			input: `{"":{"a":"value a","":{"b":"value b"}}}`,
+		},
+		{
+			path:  "//",
+			value: `{"b":"value b"}`,
+			input: `{"":{"a":"value a","":{"b":"value b"}}}`,
 		},
 		{
 			path: "/a/doesnotexist",
@@ -157,10 +173,6 @@ func TestJSONPointer(t *testing.T) {
 		{
 			path:  "/what~0.a.~0pain",
 			value: `"ouch5"`,
-		},
-		{
-			path:  "/",
-			value: `{"can we access":"this?"}`,
 		},
 		{
 			path:  "//can we access",
@@ -192,13 +204,17 @@ func TestJSONPointer(t *testing.T) {
 		},
 	}
 
-	root, err := ParseJSON(bigSample)
-	if err != nil {
-		t.Fatalf("Failed to parse: %v", err)
-	}
-
 	for _, test := range tests {
 		t.Run(test.path, func(tt *testing.T) {
+			input := test.input
+			if input == "" {
+				input = string(bigSample)
+			}
+			root, err := ParseJSON([]byte(input))
+			if err != nil {
+				t.Fatalf("Failed to parse: %v", err)
+			}
+
 			var result *Container
 			result, err = root.JSONPointer(test.path)
 			if len(test.err) > 0 {
@@ -209,8 +225,7 @@ func TestJSONPointer(t *testing.T) {
 				}
 				return
 			} else if err != nil {
-				tt.Error(err)
-				return
+				tt.Fatal(err)
 			}
 			if exp, act := test.value, result.String(); exp != act {
 				tt.Errorf("Wrong result: %v != %v", act, exp)
