@@ -30,7 +30,7 @@ import (
 
 ```go
 jsonParsed, err := gabs.ParseJSON([]byte(`{
-	"outter":{
+	"outer":{
 		"inner":{
 			"value1":10,
 			"value2":22
@@ -50,16 +50,16 @@ if err != nil {
 var value float64
 var ok bool
 
-value, ok = jsonParsed.Path("outter.inner.value1").Data().(float64)
+value, ok = jsonParsed.Path("outer.inner.value1").Data().(float64)
 // value == 10.0, ok == true
 
-value, ok = jsonParsed.Search("outter", "inner", "value1").Data().(float64)
+value, ok = jsonParsed.Search("outer", "inner", "value1").Data().(float64)
 // value == 10.0, ok == true
 
-value, ok = jsonParsed.Search("outter", "alsoInner", "array1", "1").Data().(float64)
+value, ok = jsonParsed.Search("outer", "alsoInner", "array1", "1").Data().(float64)
 // value == 40.0, ok == true
 
-gObj, err := jsonParsed.JSONPointer("/outter/alsoInner/array1/1")
+gObj, err := jsonParsed.JSONPointer("/outer/alsoInner/array1/1")
 if err != nil {
 	panic(err)
 }
@@ -69,7 +69,7 @@ value, ok = gObj.Data().(float64)
 value, ok = jsonParsed.Path("does.not.exist").Data().(float64)
 // value == 0.0, ok == false
 
-exists := jsonParsed.Exists("outter", "inner", "value1")
+exists := jsonParsed.Exists("outer", "inner", "value1")
 // exists == true
 
 exists = jsonParsed.ExistsP("does.not.exist")
@@ -133,9 +133,9 @@ Will print `2`.
 jsonObj := gabs.New()
 // or gabs.Wrap(jsonObject) to work on an existing map[string]interface{}
 
-jsonObj.Set(10, "outter", "inner", "value")
-jsonObj.SetP(20, "outter.inner.value2")
-jsonObj.Set(30, "outter", "inner2", "value3")
+jsonObj.Set(10, "outer", "inner", "value")
+jsonObj.SetP(20, "outer.inner.value2")
+jsonObj.Set(30, "outer", "inner2", "value3")
 
 fmt.Println(jsonObj.String())
 ```
@@ -143,7 +143,7 @@ fmt.Println(jsonObj.String())
 Will print:
 
 ```
-{"outter":{"inner":{"value":10,"value2":20},"inner2":{"value3":30}}}
+{"outer":{"inner":{"value":10,"value2":20},"inner2":{"value3":30}}}
 ```
 
 To pretty-print:
@@ -156,7 +156,7 @@ Will print:
 
 ```
 {
-  "outter": {
+  "outer": {
     "inner": {
       "value": 10,
       "value2": 20
@@ -222,33 +222,33 @@ This is the easiest part:
 
 ```go
 jsonParsedObj, _ := gabs.ParseJSON([]byte(`{
-	"outter":{
+	"outer":{
 		"values":{
 			"first":10,
 			"second":11
 		}
 	},
-	"outter2":"hello world"
+	"outer2":"hello world"
 }`))
 
 jsonOutput := jsonParsedObj.String()
-// Becomes `{"outter":{"values":{"first":10,"second":11}},"outter2":"hello world"}`
+// Becomes `{"outer":{"values":{"first":10,"second":11}},"outer2":"hello world"}`
 ```
 
 And to serialize a specific segment is as simple as:
 
 ```go
 jsonParsedObj := gabs.ParseJSON([]byte(`{
-	"outter":{
+	"outer":{
 		"values":{
 			"first":10,
 			"second":11
 		}
 	},
-	"outter2":"hello world"
+	"outer2":"hello world"
 }`))
 
-jsonOutput := jsonParsedObj.Search("outter").String()
+jsonOutput := jsonParsedObj.Search("outer").String()
 // Becomes `{"values":{"first":10,"second":11}}`
 ```
 
@@ -257,11 +257,11 @@ jsonOutput := jsonParsedObj.Search("outter").String()
 You can merge a JSON structure into an existing one, where collisions will be converted into a JSON array.
 
 ```go
-jsonParsed1, _ := ParseJSON([]byte(`{"outter":{"value1":"one"}}`))
-jsonParsed2, _ := ParseJSON([]byte(`{"outter":{"inner":{"value3":"three"}},"outter2":{"value2":"two"}}`))
+jsonParsed1, _ := ParseJSON([]byte(`{"outer":{"value1":"one"}}`))
+jsonParsed2, _ := ParseJSON([]byte(`{"outer":{"inner":{"value3":"three"}},"outer2":{"value2":"two"}}`))
 
 jsonParsed1.Merge(jsonParsed2)
-// Becomes `{"outter":{"inner":{"value3":"three"},"value1":"one"},"outter2":{"value2":"two"}}`
+// Becomes `{"outer":{"inner":{"value3":"three"},"value1":"one"},"outer2":{"value2":"two"}}`
 ```
 
 Arrays are merged:
