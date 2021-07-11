@@ -702,7 +702,7 @@ func (g *Container) ArrayCountP(path string) (int, error) {
 
 //------------------------------------------------------------------------------
 
-func walkObject(path string, obj map[string]interface{}, flat map[string]interface{}, includeEmpty bool) {
+func walkObject(path string, obj, flat map[string]interface{}, includeEmpty bool) {
 	if includeEmpty && len(obj) == 0 {
 		flat[path] = struct{}{}
 	}
@@ -792,7 +792,7 @@ func (g *Container) Bytes() []byte {
 
 // BytesIndent marshals an element to a JSON []byte blob formatted with a prefix
 // and indent string.
-func (g *Container) BytesIndent(prefix string, indent string) []byte {
+func (g *Container) BytesIndent(prefix, indent string) []byte {
 	if g.object != nil {
 		if data, err := json.MarshalIndent(g.Data(), prefix, indent); err == nil {
 			return data
@@ -808,7 +808,7 @@ func (g *Container) String() string {
 
 // StringIndent marshals an element to a JSON string formatted with a prefix and
 // indent string.
-func (g *Container) StringIndent(prefix string, indent string) string {
+func (g *Container) StringIndent(prefix, indent string) string {
 	return string(g.BytesIndent(prefix, indent))
 }
 
@@ -823,7 +823,7 @@ func EncodeOptHTMLEscape(doEscape bool) EncodeOpt {
 }
 
 // EncodeOptIndent sets the encoder to indent the JSON output.
-func EncodeOptIndent(prefix string, indent string) EncodeOpt {
+func EncodeOptIndent(prefix, indent string) EncodeOpt {
 	return func(e *json.Encoder) {
 		e.SetIndent(prefix, indent)
 	}
