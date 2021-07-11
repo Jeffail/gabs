@@ -141,15 +141,16 @@ func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Cont
 	object := g.Data()
 	for target := 0; target < len(hierarchy); target++ {
 		pathSeg := hierarchy[target]
-		if mmap, ok := object.(map[string]interface{}); ok {
-			object, ok = mmap[pathSeg]
-			if !ok {
+		switch typedObj := object.(type) {
+		case map[string]interface{}:
+			var ok bool
+			if object, ok = typedObj[pathSeg]; !ok {
 				return nil, fmt.Errorf("failed to resolve path segment '%v': key '%v' was not found", target, pathSeg)
 			}
-		} else if marray, ok := object.([]interface{}); ok {
+		case []interface{}:
 			if allowWildcard && pathSeg == "*" {
 				tmpArray := []interface{}{}
-				for _, val := range marray {
+				for _, val := range typedObj {
 					if (target + 1) >= len(hierarchy) {
 						tmpArray = append(tmpArray, val)
 					} else if res := Wrap(val).Search(hierarchy[target+1:]...); res != nil {
@@ -168,11 +169,11 @@ func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Cont
 			if index < 0 {
 				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' is invalid", target, pathSeg)
 			}
-			if len(marray) <= index {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
+			if len(typedObj) <= index {
+				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(typedObj))
 			}
-			object = marray[index]
-		} else {
+			object = typedObj[index]
+		default:
 			return nil, fmt.Errorf("failed to resolve path segment '%v': field '%v' was not found", target, pathSeg)
 		}
 	}
@@ -303,15 +304,16 @@ func (g *Container) Set(value interface{}, hierarchy ...string) (*Container, err
 
 	for target := 0; target < len(hierarchy); target++ {
 		pathSeg := hierarchy[target]
-		if mmap, ok := object.(map[string]interface{}); ok {
+		switch typedObj := object.(type) {
+		case map[string]interface{}:
 			if target == len(hierarchy)-1 {
 				object = value
-				mmap[pathSeg] = object
-			} else if object = mmap[pathSeg]; object == nil {
-				mmap[pathSeg] = map[string]interface{}{}
-				object = mmap[pathSeg]
+				typedObj[pathSeg] = object
+			} else if object = typedObj[pathSeg]; object == nil {
+				typedObj[pathSeg] = map[string]interface{}{}
+				object = typedObj[pathSeg]
 			}
-		} else if marray, ok := object.([]interface{}); ok {
+		case []interface{}:
 			if pathSeg == "-" {
 				if target < 1 {
 					return nil, errors.New("unable to append new array index at root of path")
@@ -321,8 +323,8 @@ func (g *Container) Set(value interface{}, hierarchy ...string) (*Container, err
 				} else {
 					object = map[string]interface{}{}
 				}
-				marray = append(marray, object)
-				if _, err := g.Set(marray, hierarchy[:target]...); err != nil {
+				typedObj = append(typedObj, object)
+				if _, err := g.Set(typedObj, hierarchy[:target]...); err != nil {
 					return nil, err
 				}
 			} else {
@@ -333,17 +335,17 @@ func (g *Container) Set(value interface{}, hierarchy ...string) (*Container, err
 				if index < 0 {
 					return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' is invalid", target, pathSeg)
 				}
-				if len(marray) <= index {
-					return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
+				if len(typedObj) <= index {
+					return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(typedObj))
 				}
 				if target == len(hierarchy)-1 {
 					object = value
-					marray[index] = object
-				} else if object = marray[index]; object == nil {
+					typedObj[index] = object
+				} else if object = typedObj[index]; object == nil {
 					return nil, fmt.Errorf("failed to resolve path segment '%v': field '%v' was not found", target, pathSeg)
 				}
 			}
-		} else {
+		default:
 			return nil, ErrPathCollision
 		}
 	}
