@@ -501,7 +501,9 @@ func (g *Container) MergeFn(source *Container, collisionFn func(destination, sou
 	var recursiveFnc func(map[string]interface{}, []string) error
 	recursiveFnc = func(mmap map[string]interface{}, path []string) error {
 		for key, value := range mmap {
-			newPath := append(path, key)
+			newPath := make([]string, len(path))
+			copy(newPath, path)
+			newPath = append(newPath, key)
 			if g.Exists(newPath...) {
 				existingData := g.Search(newPath...).Data()
 				switch t := value.(type) {
