@@ -97,8 +97,8 @@ func JSONPointerToSlice(path string) ([]string, error) {
 	}
 	hierarchy := strings.Split(path, "/")[1:]
 	for i, v := range hierarchy {
-		v = strings.Replace(v, "~1", "/", -1)
-		v = strings.Replace(v, "~0", "~", -1)
+		v = strings.ReplaceAll(v, "~1", "/")
+		v = strings.ReplaceAll(v, "~0", "~")
 		hierarchy[i] = v
 	}
 	return hierarchy, nil
@@ -112,8 +112,8 @@ func JSONPointerToSlice(path string) ([]string, error) {
 func DotPathToSlice(path string) []string {
 	hierarchy := strings.Split(path, ".")
 	for i, v := range hierarchy {
-		v = strings.Replace(v, "~1", ".", -1)
-		v = strings.Replace(v, "~0", "~", -1)
+		v = strings.ReplaceAll(v, "~1", ".")
+		v = strings.ReplaceAll(v, "~0", "~")
 		hierarchy[i] = v
 	}
 	return hierarchy
