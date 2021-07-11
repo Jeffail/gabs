@@ -86,7 +86,7 @@ var (
 // gabs paths, '~' needs to be encoded as '~0' and '/' needs to be encoded as
 // '~1' when these characters appear in a reference key.
 func JSONPointerToSlice(path string) ([]string, error) {
-	if len(path) == 0 {
+	if path == "" {
 		return nil, nil
 	}
 	if path[0] != '/' {
