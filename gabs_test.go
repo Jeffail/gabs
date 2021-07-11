@@ -707,6 +707,10 @@ func TestExamples(t *testing.T) {
 		}
 	}
 }`))
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
 
 	var value float64
 	var ok bool
@@ -1575,7 +1579,10 @@ dynamic approach.
 func BenchmarkStatic(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var jsonObj jsonStructure
-		json.Unmarshal(jsonContent, &jsonObj)
+		if err := json.Unmarshal(jsonContent, &jsonObj); err != nil {
+			b.Errorf("Error: %v", err)
+			return
+		}
 
 		if val := jsonObj.FirstOutter.SecondInner.NumberType; val != 12 {
 			b.Errorf("Wrong value of FirstOutter.SecondInner.NumberType: %v\n", val)
