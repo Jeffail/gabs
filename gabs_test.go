@@ -1069,19 +1069,20 @@ func TestChildrenMap(t *testing.T) {
 	}
 
 	for key, val := range objectMap {
-		if key == "objectOne" {
+		switch key {
+		case "objectOne":
 			if val := val.S("num").Data().(float64); val != 1 {
 				t.Errorf("%v != %v", val, 1)
 			}
-		} else if key == "objectTwo" {
+		case "objectTwo":
 			if val := val.S("num").Data().(float64); val != 2 {
 				t.Errorf("%v != %v", val, 2)
 			}
-		} else if key == "objectThree" {
+		case "objectThree":
 			if val := val.S("num").Data().(float64); val != 3 {
 				t.Errorf("%v != %v", val, 3)
 			}
-		} else {
+		default:
 			t.Errorf("Unexpected key: %v", key)
 		}
 	}
