@@ -784,8 +784,8 @@ func (g *Container) flatten(includeEmpty bool) (map[string]interface{}, error) {
 
 // Bytes marshals an element to a JSON []byte blob.
 func (g *Container) Bytes() []byte {
-	if bytes, err := json.Marshal(g.Data()); err == nil {
-		return bytes
+	if data, err := json.Marshal(g.Data()); err == nil {
+		return data
 	}
 	return []byte("null")
 }
@@ -794,8 +794,8 @@ func (g *Container) Bytes() []byte {
 // and indent string.
 func (g *Container) BytesIndent(prefix string, indent string) []byte {
 	if g.object != nil {
-		if bytes, err := json.MarshalIndent(g.Data(), prefix, indent); err == nil {
-			return bytes
+		if data, err := json.MarshalIndent(g.Data(), prefix, indent); err == nil {
+			return data
 		}
 	}
 	return []byte("null")

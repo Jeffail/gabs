@@ -1422,7 +1422,7 @@ func TestLargeSample(t *testing.T) {
 }
 
 func TestShorthand(t *testing.T) {
-	json, _ := ParseJSON([]byte(`{
+	container, _ := ParseJSON([]byte(`{
 		"outter":{
 			"inner":{
 				"value":5,
@@ -1437,24 +1437,24 @@ func TestShorthand(t *testing.T) {
 		}
 	}`))
 
-	missingValue := json.S("outter").S("doesntexist").S("alsodoesntexist").S("inner").S("value").Data()
+	missingValue := container.S("outter").S("doesntexist").S("alsodoesntexist").S("inner").S("value").Data()
 	if missingValue != nil {
 		t.Errorf("missing value was actually found: %v\n", missingValue)
 	}
 
-	realValue := json.S("outter").S("inner").S("value2").Data().(float64)
+	realValue := container.S("outter").S("inner").S("value2").Data().(float64)
 	if realValue != 10 {
 		t.Errorf("real value was incorrect: %v\n", realValue)
 	}
 
-	_, err := json.S("outter2").Set(json.S("outter").S("inner").Data(), "inner")
+	_, err := container.S("outter2").Set(container.S("outter").S("inner").Data(), "inner")
 	if err != nil {
 		t.Errorf("error setting outter2: %v\n", err)
 	}
 
 	compare := `{"outter":{"inner":{"value":5,"value2":10,"value3":11},"inner2":{}}` +
 		`,"outter2":{"inner":{"value":5,"value2":10,"value3":11}}}`
-	out := json.String()
+	out := container.String()
 	if out != compare {
 		t.Errorf("wrong serialized structure: %v\n", out)
 	}
@@ -1462,8 +1462,8 @@ func TestShorthand(t *testing.T) {
 	compare2 := `{"outter":{"inner":{"value":6,"value2":10,"value3":11},"inner2":{}}` +
 		`,"outter2":{"inner":{"value":6,"value2":10,"value3":11}}}`
 
-	json.S("outter").S("inner").Set(6, "value")
-	out = json.String()
+	container.S("outter").S("inner").Set(6, "value")
+	out = container.String()
 	if out != compare2 {
 		t.Errorf("wrong serialized structure: %v\n", out)
 	}
@@ -1500,8 +1500,8 @@ func TestInvalid(t *testing.T) {
 }
 
 func TestCreation(t *testing.T) {
-	json, _ := ParseJSON([]byte(`{}`))
-	inner, err := json.ObjectP("test.inner")
+	container, _ := ParseJSON([]byte(`{}`))
+	inner, err := container.ObjectP("test.inner")
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -1517,7 +1517,7 @@ func TestCreation(t *testing.T) {
 
 	expected := `{"test":{"inner":{"array":["first element of the array",2,"three"],` +
 		`"first":10,"second":20}}}`
-	actual := json.String()
+	actual := container.String()
 	if actual != expected {
 		t.Errorf("received incorrect output from json object: %v\n", actual)
 	}
