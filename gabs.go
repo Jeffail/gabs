@@ -519,11 +519,9 @@ func (g *Container) MergeFn(source *Container, collisionFn func(destination, sou
 						return err
 					}
 				}
-			} else {
+			} else if _, err := g.Set(value, newPath...); err != nil {
 				// path doesn't exist. So set the value
-				if _, err := g.Set(value, newPath...); err != nil {
-					return err
-				}
+				return err
 			}
 		}
 		return nil
