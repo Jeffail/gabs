@@ -582,6 +582,90 @@ func TestDeletes(t *testing.T) {
 	}
 }
 
+func TestDeletesTable(t *testing.T) {
+	testCases := []struct {
+		name   string
+		path   string
+		input  string
+		output string
+	}{
+		{
+			name:   "top level array",
+			path:   `*`,
+			input:  `[{"a":"foo"},{"b":"bar"}]`,
+			output: `[]`,
+		},
+		{
+			name:   "field in object",
+			path:   `b`,
+			input:  `{"a":"foo","b":"bar"}`,
+			output: `{"a":"foo"}`,
+		},
+		{
+			name:   "field in nested object",
+			path:   `b.d`,
+			input:  `{"a":"foo","b":{"c":"bar","d":"baz"}}`,
+			output: `{"a":"foo","b":{"c":"bar"}}`,
+		},
+		{
+			name:   "field in array nested object",
+			path:   `0.b.d`,
+			input:  `[{"a":"foo","b":{"c":"bar","d":"baz"}},{"e":"buz"}]`,
+			output: `[{"a":"foo","b":{"c":"bar"}},{"e":"buz"}]`,
+		},
+		{
+			name:   "field in array of array objects",
+			path:   `0.1.b`,
+			input:  `[[{"a":"foo"},{"b":"bar"}],[{"c":"baz"},{"d":"buz"}]]`,
+			output: `[[{"a":"foo"},{}],[{"c":"baz"},{"d":"buz"}]]`,
+		},
+		{
+			name:   "field in array of array objects",
+			path:   `0.1.b`,
+			input:  `[[{"a":"foo"},{"b":"bar"}],[{"c":"baz"},{"d":"buz"}]]`,
+			output: `[[{"a":"foo"},{}],[{"c":"baz"},{"d":"buz"}]]`,
+		},
+		{
+			name:   "field in array wildcard of array objects",
+			path:   `*.1.b`,
+			input:  `[[{"a":"foo"},{"b":"bar"}],[{"c":"baz"},{"d":"buz"}]]`,
+			output: `[[{"a":"foo"},{}],[{"c":"baz"},{"d":"buz"}]]`,
+		},
+		{
+			name:   "field in array of array wildcard objects",
+			path:   `0.*.b`,
+			input:  `[[{"a":"foo"},{"b":"bar"}],[{"c":"baz"},{"d":"buz"}]]`,
+			output: `[[{"a":"foo"},{}],[{"c":"baz"},{"d":"buz"}]]`,
+		},
+		{
+			name:   "field in array wildcard of array wildcard objects",
+			path:   `*.*.b`,
+			input:  `[[{"a":"foo"},{"b":"bar"}],[{"c":"baz"},{"d":"buz"}]]`,
+			output: `[[{"a":"foo"},{}],[{"c":"baz"},{"d":"buz"}]]`,
+		},
+		{
+			name:   "wildcard in array wildcard of array wildcard objects",
+			path:   `*.*.*`,
+			input:  `[[[{"a":"foo"},{"b":"bar"}]],[[{"c":"baz"},{"d":"buz"}]]]`,
+			output: `[[[]],[[]]]`,
+		},
+	}
+
+	for _, test := range testCases {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			parsed, err := ParseJSON([]byte(test.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			parsed.DeleteP(test.path)
+			if exp, act := test.output, parsed.String(); exp != act {
+				t.Errorf("wrong output, expect: %v, actual: %v", exp, act)
+			}
+		})
+	}
+}
+
 func TestDeletesWithArrays(t *testing.T) {
 	rawJSON := `{
 		"outter":[

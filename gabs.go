@@ -137,46 +137,87 @@ func (g *Container) Data() interface{} {
 
 //------------------------------------------------------------------------------
 
-func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Container, error) {
-	object := g.Data()
-	for target := 0; target < len(hierarchy); target++ {
-		pathSeg := hierarchy[target]
-		if mmap, ok := object.(map[string]interface{}); ok {
-			object, ok = mmap[pathSeg]
-			if !ok {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': key '%v' was not found", target, pathSeg)
-			}
-		} else if marray, ok := object.([]interface{}); ok {
-			if allowWildcard && pathSeg == "*" {
-				tmpArray := []interface{}{}
-				for _, val := range marray {
-					if (target + 1) >= len(hierarchy) {
-						tmpArray = append(tmpArray, val)
-					} else if res := Wrap(val).Search(hierarchy[target+1:]...); res != nil {
-						tmpArray = append(tmpArray, res.Data())
-					}
-				}
-				if len(tmpArray) == 0 {
-					return nil, nil
-				}
-				return &Container{tmpArray}, nil
-			}
-			index, err := strconv.Atoi(pathSeg)
-			if err != nil {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but segment value '%v' could not be parsed into array index: %v", target, pathSeg, err)
-			}
-			if index < 0 {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' is invalid", target, pathSeg)
-			}
-			if len(marray) <= index {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
-			}
-			object = marray[index]
-		} else {
-			return nil, fmt.Errorf("failed to resolve path segment '%v': field '%v' was not found", target, pathSeg)
-		}
+const wildcard = "*"
+
+type path struct {
+	hierarchy []string
+	object    interface{}
+}
+
+type paths []path
+
+func (ps paths) Container() *Container {
+	if len(ps) == 0 {
+		return nil
 	}
-	return &Container{object}, nil
+
+	if len(ps) == 1 {
+		return &Container{object: ps[0].object}
+	}
+
+	s := make([]interface{}, len(ps))
+	for i, p := range ps {
+		s[i] = p.object
+	}
+	return &Container{object: s}
+}
+
+func (g *Container) searchPaths(allowWildcard bool, hierarchy ...string) (paths, error) {
+	ps := paths{{object: g.Data()}}
+
+	for i, pathSeg := range hierarchy {
+		var tmpPs paths
+
+		for _, p := range ps {
+			switch val := p.object.(type) {
+			case map[string]interface{}:
+				obj, ok := val[pathSeg]
+				if !ok {
+					return nil, fmt.Errorf("failed to resolve path segment '%d': key '%v' was not found", i, pathSeg)
+				}
+				tmpPs = append(tmpPs, path{
+					hierarchy: append(p.hierarchy, pathSeg),
+					object:    obj,
+				})
+			case []interface{}:
+				if allowWildcard && pathSeg == wildcard {
+					for j, v := range val {
+						newPath := path{
+							hierarchy: append([]string{}, p.hierarchy...),
+							object:    v,
+						}
+						newPath.hierarchy = append(newPath.hierarchy, strconv.Itoa(j))
+						tmpPs = append(tmpPs, newPath)
+					}
+					continue
+				}
+				index, err := strconv.Atoi(pathSeg)
+				if err != nil {
+					return nil, fmt.Errorf("failed to resolve path segment '%d': found array but segment value '%s' could not be parsed into array index: %v", i, pathSeg, err)
+				}
+				if index < 0 {
+					return nil, fmt.Errorf("failed to resolve path segment '%d': found array but index '%s' is invalid", i, pathSeg)
+				}
+				if len(val) <= index {
+					return nil, fmt.Errorf("failed to resolve path segment '%d': found array but index '%s' exceeded target array size of '%v'", i, pathSeg, len(val))
+				}
+				tmpPs = append(tmpPs, path{
+					hierarchy: append(p.hierarchy, pathSeg),
+					object:    val[index],
+				})
+			default:
+				return nil, fmt.Errorf("failed to resolve path segment '%d': field '%s' was not found", i, pathSeg)
+			}
+		}
+
+		if tmpPs == nil {
+			return nil, nil
+		}
+
+		ps = tmpPs
+	}
+
+	return ps, nil
 }
 
 // Search attempts to find and return an object within the wrapped structure by
@@ -187,8 +228,8 @@ func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Cont
 // character '*', in which case all elements are searched with the remaining
 // search hierarchy and the results returned within an array.
 func (g *Container) Search(hierarchy ...string) *Container {
-	c, _ := g.searchStrict(true, hierarchy...)
-	return c
+	paths, _ := g.searchPaths(true, hierarchy...)
+	return paths.Container()
 }
 
 // Path searches the wrapped structure following a path in dot notation,
@@ -213,7 +254,11 @@ func (g *Container) JSONPointer(path string) (*Container, error) {
 	if err != nil {
 		return nil, err
 	}
-	return g.searchStrict(false, hierarchy...)
+	paths, err := g.searchPaths(false, hierarchy...)
+	if err != nil {
+		return nil, err
+	}
+	return paths.Container(), nil
 }
 
 // S is a shorthand alias for Search.
@@ -439,8 +484,7 @@ func (g *Container) ArrayOfSizeI(size, index int) (*Container, error) {
 }
 
 // Delete an element at a path, an error is returned if the element does not
-// exist or is not an object. In order to remove an array element please use
-// ArrayRemove.
+// exist or is not an object.
 func (g *Container) Delete(hierarchy ...string) error {
 	if g == nil || g.object == nil {
 		return ErrNotObj
@@ -449,38 +493,50 @@ func (g *Container) Delete(hierarchy ...string) error {
 		return ErrInvalidQuery
 	}
 
-	object := g.object
-	target := hierarchy[len(hierarchy)-1]
-	if len(hierarchy) > 1 {
-		object = g.Search(hierarchy[:len(hierarchy)-1]...).Data()
+	wildcarded := false
+	for _, pathSeg := range hierarchy {
+		if pathSeg == wildcard {
+			wildcarded = true
+			break
+		}
 	}
 
-	if obj, ok := object.(map[string]interface{}); ok {
-		if _, ok = obj[target]; !ok {
-			return ErrNotFound
+	target := hierarchy[len(hierarchy)-1]
+	paths, _ := g.searchPaths(true, hierarchy[:len(hierarchy)-1]...)
+
+	for _, p := range paths {
+		switch val := p.object.(type) {
+		case map[string]interface{}:
+			if _, ok := val[target]; !ok && !wildcarded {
+				return ErrNotFound
+			}
+			delete(val, target)
+		case []interface{}:
+			if target == wildcard {
+				g.Set([]interface{}{}, p.hierarchy...)
+				continue
+			}
+			index, err := strconv.Atoi(target)
+			if err != nil {
+				return fmt.Errorf("failed to parse array index '%v': %v", target, err)
+			}
+			if index < 0 {
+				return ErrOutOfBounds
+			}
+			if index >= len(val) {
+				if !wildcarded {
+					return ErrOutOfBounds
+				}
+				continue
+			}
+			val = append(val[:index], val[index+1:]...)
+			g.Set(val, p.hierarchy...)
+		default:
+			return ErrNotObjOrArray
 		}
-		delete(obj, target)
-		return nil
 	}
-	if array, ok := object.([]interface{}); ok {
-		if len(hierarchy) < 2 {
-			return errors.New("unable to delete array index at root of path")
-		}
-		index, err := strconv.Atoi(target)
-		if err != nil {
-			return fmt.Errorf("failed to parse array index '%v': %v", target, err)
-		}
-		if index >= len(array) {
-			return ErrOutOfBounds
-		}
-		if index < 0 {
-			return ErrOutOfBounds
-		}
-		array = append(array[:index], array[index+1:]...)
-		g.Set(array, hierarchy[:len(hierarchy)-1]...)
-		return nil
-	}
-	return ErrNotObjOrArray
+
+	return nil
 }
 
 // DeleteP deletes an element at a path using dot notation, an error is returned
