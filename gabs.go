@@ -137,29 +137,32 @@ func (g *Container) Data() interface{} {
 
 //------------------------------------------------------------------------------
 
-func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Container, error) {
-	object := g.Data()
-	for target := 0; target < len(hierarchy); target++ {
-		pathSeg := hierarchy[target]
-		if mmap, ok := object.(map[string]interface{}); ok {
-			object, ok = mmap[pathSeg]
-			if !ok {
+func searchStrict(object interface{}, allowWildcard bool, hierarchy ...string) (interface{}, error) {
+	var ok bool
+
+	for target, pathSeg := range hierarchy {
+		switch m := object.(type) {
+		case map[string]interface{}:
+			if object, ok = m[pathSeg]; !ok {
 				return nil, fmt.Errorf("failed to resolve path segment '%v': key '%v' was not found", target, pathSeg)
 			}
-		} else if marray, ok := object.([]interface{}); ok {
+		case []interface{}:
 			if allowWildcard && pathSeg == "*" {
-				tmpArray := []interface{}{}
-				for _, val := range marray {
-					if (target + 1) >= len(hierarchy) {
-						tmpArray = append(tmpArray, val)
-					} else if res := Wrap(val).Search(hierarchy[target+1:]...); res != nil {
-						tmpArray = append(tmpArray, res.Data())
+				var tmpArray []interface{}
+				if (target + 1) >= len(hierarchy) {
+					tmpArray = m
+				} else {
+					tmpArray = make([]interface{}, 0, len(m))
+					for _, val := range m {
+						if res, err := searchStrict(val, allowWildcard, hierarchy[target+1:]...); err == nil {
+							tmpArray = append(tmpArray, res)
+						}
 					}
 				}
 				if len(tmpArray) == 0 {
-					return nil, nil
+					return nil, ErrInvalidQuery
 				}
-				return &Container{tmpArray}, nil
+				return tmpArray, nil
 			}
 			index, err := strconv.Atoi(pathSeg)
 			if err != nil {
@@ -168,15 +171,23 @@ func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Cont
 			if index < 0 {
 				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' is invalid", target, pathSeg)
 			}
-			if len(marray) <= index {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
+			if len(m) <= index {
+				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(m))
 			}
-			object = marray[index]
-		} else {
+			object = m[index]
+		default:
 			return nil, fmt.Errorf("failed to resolve path segment '%v': field '%v' was not found", target, pathSeg)
 		}
 	}
-	return &Container{object}, nil
+	return object, nil
+}
+
+func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Container, error) {
+	obj, err := searchStrict(g.Data(), allowWildcard, hierarchy...)
+	if err != nil {
+		return nil, err
+	}
+	return Wrap(obj), nil
 }
 
 // Search attempts to find and return an object within the wrapped structure by
