@@ -354,6 +354,9 @@ func (g *Container) Set(value interface{}, hierarchy ...string) (*Container, err
 // of the path that do not exist will be constructed, and if a collision occurs
 // with a non object type whilst iterating the path an error is returned.
 func (g *Container) SetP(value interface{}, path string) (*Container, error) {
+	if c, ok := value.(*Container); ok {
+		return g.Set(c.Data(), DotPathToSlice(path)...)
+	}
 	return g.Set(value, DotPathToSlice(path)...)
 }
 
