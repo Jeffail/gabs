@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -137,43 +138,117 @@ func (g *Container) Data() interface{} {
 
 //------------------------------------------------------------------------------
 
+type slice interface {
+	Len() int
+	At(int) interface{}
+}
+type interfaceSlice []interface{}
+
+func (is interfaceSlice) Len() int {
+	return len(is)
+}
+func (is interfaceSlice) At(i int) interface{} {
+	return is[i]
+}
+
+type reflectSlice struct {
+	v reflect.Value
+}
+
+func (rs reflectSlice) Len() int {
+	return rs.v.Len()
+}
+func (rs reflectSlice) At(i int) interface{} {
+	return rs.v.Index(i).Interface()
+}
+
+func sliceSearchAll(slice slice, target int, hierarchy ...string) *Container {
+	tmpArray := []interface{}{}
+	for i := 0; i < slice.Len(); i++ {
+		val := slice.At(i)
+		if (target + 1) >= len(hierarchy) {
+			tmpArray = append(tmpArray, val)
+		} else if res := Wrap(val).Search(hierarchy[target+1:]...); res != nil {
+			tmpArray = append(tmpArray, res.Data())
+		}
+	}
+	if len(tmpArray) == 0 {
+		return nil
+	}
+	return &Container{tmpArray}
+}
+
+func sliceSearch(slice slice, target int, pathSeg string) (interface{}, error) {
+	index, err := strconv.Atoi(pathSeg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve path segment '%v': found array but segment value '%v' could not be parsed into array index: %v", target, pathSeg, err)
+	}
+	if index < 0 {
+		return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' is invalid", target, pathSeg)
+	}
+	if slice.Len() <= index {
+		return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, slice.Len())
+	}
+	return slice.At(index), nil
+}
+
 func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Container, error) {
 	object := g.Data()
 	for target := 0; target < len(hierarchy); target++ {
 		pathSeg := hierarchy[target]
-		if mmap, ok := object.(map[string]interface{}); ok {
-			object, ok = mmap[pathSeg]
+		switch typed := object.(type) {
+
+		case map[string]interface{}:
+			var ok bool
+			object, ok = typed[pathSeg]
 			if !ok {
 				return nil, fmt.Errorf("failed to resolve path segment '%v': key '%v' was not found", target, pathSeg)
 			}
-		} else if marray, ok := object.([]interface{}); ok {
+
+		case []interface{}:
+			slice := interfaceSlice(typed)
 			if allowWildcard && pathSeg == "*" {
-				tmpArray := []interface{}{}
-				for _, val := range marray {
-					if (target + 1) >= len(hierarchy) {
-						tmpArray = append(tmpArray, val)
-					} else if res := Wrap(val).Search(hierarchy[target+1:]...); res != nil {
-						tmpArray = append(tmpArray, res.Data())
-					}
-				}
-				if len(tmpArray) == 0 {
-					return nil, nil
-				}
-				return &Container{tmpArray}, nil
+				return sliceSearchAll(slice, target, hierarchy...), nil
 			}
-			index, err := strconv.Atoi(pathSeg)
+			var err error
+			object, err = sliceSearch(slice, target, pathSeg)
 			if err != nil {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but segment value '%v' could not be parsed into array index: %v", target, pathSeg, err)
+				return nil, err
 			}
-			if index < 0 {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' is invalid", target, pathSeg)
+
+		default: // attempt reflection
+			v := reflect.ValueOf(object)
+			for v.Kind() == reflect.Pointer || v.Kind() == reflect.Interface {
+				v = v.Elem()
 			}
-			if len(marray) <= index {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
+			switch v.Kind() {
+			case reflect.Struct:
+				field := v.FieldByName(pathSeg)
+				if !field.IsValid() {
+					return nil, fmt.Errorf("failed to resolve path segment '%v': field '%v' was not found", target, pathSeg)
+				}
+				object = field.Interface()
+			case reflect.Array:
+				fallthrough
+			case reflect.Slice:
+				slice := reflectSlice{v}
+				if allowWildcard && pathSeg == "*" {
+					return sliceSearchAll(slice, target, hierarchy...), nil
+				}
+				var err error
+				object, err = sliceSearch(slice, target, pathSeg)
+				if err != nil {
+					return nil, err
+				}
+			case reflect.Map:
+				val := v.MapIndex(reflect.ValueOf(pathSeg))
+				if !val.IsValid() {
+					return nil, fmt.Errorf("failed to resolve path segment '%v': key '%v' was not found", target, pathSeg)
+				}
+				object = val.Interface()
+			default:
+				return nil, fmt.Errorf("failed to resolve path segment '%v': found unsupported object type: %s (for field '%v')", target, v.Kind(), pathSeg)
 			}
-			object = marray[index]
-		} else {
-			return nil, fmt.Errorf("failed to resolve path segment '%v': field '%v' was not found", target, pathSeg)
 		}
 	}
 	return &Container{object}, nil

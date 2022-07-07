@@ -977,6 +977,69 @@ func TestModify(t *testing.T) {
 	}
 }
 
+func TestStructSearch(t *testing.T) {
+	type inner struct {
+		Value int
+	}
+	sample := struct {
+		Pointer *inner
+		Int     int
+		Slice   []float64
+		Map     map[string]string
+		Array   [2]string
+	}{
+		Pointer: &inner{
+			Value: 10,
+		},
+		Int:   20,
+		Slice: []float64{0, 1, 2, 3.14},
+		Map: map[string]string{
+			"k": "v",
+		},
+		Array: [2]string{"a", "b"},
+	}
+
+	val := Wrap(sample)
+
+	cases := []struct {
+		Hierarchy []string
+		Expected  interface{}
+	}{
+		{
+			Hierarchy: []string{"Int"},
+			Expected:  int(20),
+		},
+		{
+			Hierarchy: []string{"Pointer", "Value"},
+			Expected:  int(10),
+		},
+		{
+			Hierarchy: []string{"Slice", "3"},
+			Expected:  float64(3.14),
+		},
+		{
+			Hierarchy: []string{"Slice", "*"},
+			Expected:  []interface{}{float64(0), float64(1), float64(2), float64(3.14)},
+		},
+		{
+			Hierarchy: []string{"Map", "k"},
+			Expected:  "v",
+		},
+		{
+			Hierarchy: []string{"Array", "0"},
+			Expected:  "a",
+		},
+	}
+	for _, c := range cases {
+		t.Run(strings.Join(c.Hierarchy, "."), func(t *testing.T) {
+			got := val.Search(c.Hierarchy...).Data()
+			if !reflect.DeepEqual(c.Expected, got) {
+				t.Errorf("Wrong value: %v, expected: %v", got, c.Expected)
+			}
+		})
+	}
+}
+
 func TestChildren(t *testing.T) {
 	json1, _ := ParseJSON([]byte(`{
 		"objectOne":{
