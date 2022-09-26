@@ -24,13 +24,14 @@ package gabs
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"strconv"
 	"strings"
+
+	"github.com/goccy/go-json"
 )
 
 //------------------------------------------------------------------------------
@@ -76,6 +77,16 @@ var (
 	ErrInvalidBuffer = errors.New("input buffer contained invalid JSON")
 )
 
+var (
+	r1 *strings.Replacer
+	r2 *strings.Replacer
+)
+
+func init() {
+	r1 = strings.NewReplacer("~1", "/", "~0", "~")
+	r2 = strings.NewReplacer("~1", ".", "~0", "~")
+}
+
 //------------------------------------------------------------------------------
 
 // JSONPointerToSlice parses a JSON pointer path
@@ -97,9 +108,7 @@ func JSONPointerToSlice(path string) ([]string, error) {
 	}
 	hierarchy := strings.Split(path, "/")[1:]
 	for i, v := range hierarchy {
-		v = strings.Replace(v, "~1", "/", -1)
-		v = strings.Replace(v, "~0", "~", -1)
-		hierarchy[i] = v
+		hierarchy[i] = r1.Replace(v)
 	}
 	return hierarchy, nil
 }
@@ -112,9 +121,7 @@ func JSONPointerToSlice(path string) ([]string, error) {
 func DotPathToSlice(path string) []string {
 	hierarchy := strings.Split(path, ".")
 	for i, v := range hierarchy {
-		v = strings.Replace(v, "~1", ".", -1)
-		v = strings.Replace(v, "~0", "~", -1)
-		hierarchy[i] = v
+		hierarchy[i] = r2.Replace(v)
 	}
 	return hierarchy
 }

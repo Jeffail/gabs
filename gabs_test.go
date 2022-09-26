@@ -2,11 +2,12 @@ package gabs
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/goccy/go-json"
 )
 
 func TestBasic(t *testing.T) {
@@ -1573,6 +1574,7 @@ dynamic approach.
 */
 
 func BenchmarkStatic(b *testing.B) {
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		var jsonObj jsonStructure
 		json.Unmarshal(jsonContent, &jsonObj)
@@ -1595,6 +1597,7 @@ func BenchmarkStatic(b *testing.B) {
 }
 
 func BenchmarkDynamic(b *testing.B) {
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		jsonObj, err := ParseJSON(jsonContent)
 		if err != nil {
