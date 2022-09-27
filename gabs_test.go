@@ -38,7 +38,7 @@ func TestBasic(t *testing.T) {
 		t.Errorf("Didn't find test2")
 	}
 
-	if result := val.Bytes(); string(result) != string(sample) {
+	if result := val.Bytes(); !bytes.Equal(result, sample) {
 		t.Errorf("Wrong []byte conversion: %s != %s", result, sample)
 	}
 }
