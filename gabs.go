@@ -255,7 +255,7 @@ func (g *Container) Children() []*Container {
 		return children
 	}
 	if mmap, ok := g.Data().(map[string]interface{}); ok {
-		children := []*Container{}
+		children := make([]*Container, len(mmap))
 		for _, obj := range mmap {
 			children = append(children, &Container{obj})
 		}

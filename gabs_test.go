@@ -1904,3 +1904,22 @@ func TestFlattenIncludeEmpty(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkChildren(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		jsonObj, err := ParseJSON(bigSample)
+		if err != nil {
+			b.Errorf("Error parsing json: %v\n", err)
+		}
+
+		_ = jsonObj.Children()
+
+		FOSI := jsonObj.S("firstOutter", "secondInner")
+		_ = FOSI.Children()
+		SOSI := jsonObj.S("secondOutter", "secondInner")
+		_ = SOSI.Children()
+		SOTI := jsonObj.S("secondOutter", "thirdInner")
+		_ = SOTI.Children()
+	}
+}
