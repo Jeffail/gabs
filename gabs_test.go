@@ -2,12 +2,11 @@ package gabs
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/goccy/go-json"
 )
 
 func TestBasic(t *testing.T) {
