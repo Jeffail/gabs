@@ -1906,3 +1906,20 @@ func TestFlattenIncludeEmpty(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkWildcardSearch(b *testing.B) {
+	sample := []byte(`{"test":[{"value":10},{"value":20}]}`)
+
+	val, err := ParseJSON(sample)
+	if err != nil {
+		b.Fatalf("Failed to parse: %v", err)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		val.Search([]string{"test", "*"}...)
+		val.Search([]string{"test", "*", "value"}...)
+	}
+}
