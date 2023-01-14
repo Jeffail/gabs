@@ -24,14 +24,13 @@ package gabs
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"strconv"
 	"strings"
-
-	"github.com/goccy/go-json"
 )
 
 //------------------------------------------------------------------------------
