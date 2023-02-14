@@ -38,7 +38,7 @@ func TestBasic(t *testing.T) {
 		t.Errorf("Didn't find test2")
 	}
 
-	if result := val.Bytes(); string(result) != string(sample) {
+	if result := val.Bytes(); !bytes.Equal(result, sample) {
 		t.Errorf("Wrong []byte conversion: %s != %s", result, sample)
 	}
 }
@@ -707,6 +707,10 @@ func TestExamples(t *testing.T) {
 		}
 	}
 }`))
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
 
 	var value float64
 	var ok bool
@@ -968,11 +972,11 @@ func TestModify(t *testing.T) {
 		t.Errorf("Didn't find test.value")
 	}
 
-	if out := val.String(); `{"test":{"value":45},"test2":20}` != out {
+	if out := val.String(); out != `{"test":{"value":45},"test2":20}` {
 		t.Errorf("Incorrectly serialized: %v", out)
 	}
 
-	if out := val.Search("test").String(); `{"value":45}` != out {
+	if out := val.Search("test").String(); out != `{"value":45}` {
 		t.Errorf("Incorrectly serialized: %v", out)
 	}
 }
@@ -1065,19 +1069,20 @@ func TestChildrenMap(t *testing.T) {
 	}
 
 	for key, val := range objectMap {
-		if "objectOne" == key {
+		switch key {
+		case "objectOne":
 			if val := val.S("num").Data().(float64); val != 1 {
 				t.Errorf("%v != %v", val, 1)
 			}
-		} else if "objectTwo" == key {
+		case "objectTwo":
 			if val := val.S("num").Data().(float64); val != 2 {
 				t.Errorf("%v != %v", val, 2)
 			}
-		} else if "objectThree" == key {
+		case "objectThree":
 			if val := val.S("num").Data().(float64); val != 3 {
 				t.Errorf("%v != %v", val, 3)
 			}
-		} else {
+		default:
 			t.Errorf("Unexpected key: %v", key)
 		}
 	}
@@ -1418,7 +1423,7 @@ func TestLargeSample(t *testing.T) {
 }
 
 func TestShorthand(t *testing.T) {
-	json, _ := ParseJSON([]byte(`{
+	container, _ := ParseJSON([]byte(`{
 		"outter":{
 			"inner":{
 				"value":5,
@@ -1433,24 +1438,24 @@ func TestShorthand(t *testing.T) {
 		}
 	}`))
 
-	missingValue := json.S("outter").S("doesntexist").S("alsodoesntexist").S("inner").S("value").Data()
+	missingValue := container.S("outter").S("doesntexist").S("alsodoesntexist").S("inner").S("value").Data()
 	if missingValue != nil {
 		t.Errorf("missing value was actually found: %v\n", missingValue)
 	}
 
-	realValue := json.S("outter").S("inner").S("value2").Data().(float64)
+	realValue := container.S("outter").S("inner").S("value2").Data().(float64)
 	if realValue != 10 {
 		t.Errorf("real value was incorrect: %v\n", realValue)
 	}
 
-	_, err := json.S("outter2").Set(json.S("outter").S("inner").Data(), "inner")
+	_, err := container.S("outter2").Set(container.S("outter").S("inner").Data(), "inner")
 	if err != nil {
 		t.Errorf("error setting outter2: %v\n", err)
 	}
 
 	compare := `{"outter":{"inner":{"value":5,"value2":10,"value3":11},"inner2":{}}` +
 		`,"outter2":{"inner":{"value":5,"value2":10,"value3":11}}}`
-	out := json.String()
+	out := container.String()
 	if out != compare {
 		t.Errorf("wrong serialized structure: %v\n", out)
 	}
@@ -1458,8 +1463,8 @@ func TestShorthand(t *testing.T) {
 	compare2 := `{"outter":{"inner":{"value":6,"value2":10,"value3":11},"inner2":{}}` +
 		`,"outter2":{"inner":{"value":6,"value2":10,"value3":11}}}`
 
-	json.S("outter").S("inner").Set(6, "value")
-	out = json.String()
+	container.S("outter").S("inner").Set(6, "value")
+	out = container.String()
 	if out != compare2 {
 		t.Errorf("wrong serialized structure: %v\n", out)
 	}
@@ -1490,14 +1495,14 @@ func TestInvalid(t *testing.T) {
 	}
 
 	invalidStr := validObj.S("Doesn't exist").String()
-	if "null" != invalidStr {
+	if invalidStr != "null" {
 		t.Errorf("expected 'null', received: %v", invalidStr)
 	}
 }
 
 func TestCreation(t *testing.T) {
-	json, _ := ParseJSON([]byte(`{}`))
-	inner, err := json.ObjectP("test.inner")
+	container, _ := ParseJSON([]byte(`{}`))
+	inner, err := container.ObjectP("test.inner")
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -1513,7 +1518,7 @@ func TestCreation(t *testing.T) {
 
 	expected := `{"test":{"inner":{"array":["first element of the array",2,"three"],` +
 		`"first":10,"second":20}}}`
-	actual := json.String()
+	actual := container.String()
 	if actual != expected {
 		t.Errorf("received incorrect output from json object: %v\n", actual)
 	}
@@ -1576,7 +1581,10 @@ func BenchmarkStatic(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		var jsonObj jsonStructure
-		json.Unmarshal(jsonContent, &jsonObj)
+		if err := json.Unmarshal(jsonContent, &jsonObj); err != nil {
+			b.Errorf("Error: %v", err)
+			return
+		}
 
 		if val := jsonObj.FirstOutter.SecondInner.NumberType; val != 12 {
 			b.Errorf("Wrong value of FirstOutter.SecondInner.NumberType: %v\n", val)
@@ -1629,10 +1637,10 @@ func TestBadIndexes(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if act := jsonObj.Index(0).Data(); nil != act {
+	if act := jsonObj.Index(0).Data(); act != nil {
 		t.Errorf("Unexpected value returned: %v != %v", nil, act)
 	}
-	if act := jsonObj.S("array").Index(4).Data(); nil != act {
+	if act := jsonObj.S("array").Index(4).Data(); act != nil {
 		t.Errorf("Unexpected value returned: %v != %v", nil, act)
 	}
 }
