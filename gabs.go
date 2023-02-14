@@ -155,17 +155,22 @@ func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Cont
 			}
 		case []interface{}:
 			if allowWildcard && pathSeg == "*" {
-				tmpArray := []interface{}{}
-				for _, val := range typedObj {
-					if (target + 1) >= len(hierarchy) {
-						tmpArray = append(tmpArray, val)
-					} else if res := Wrap(val).Search(hierarchy[target+1:]...); res != nil {
-						tmpArray = append(tmpArray, res.Data())
+				var tmpArray []interface{}
+				if (target + 1) >= len(hierarchy) {
+					tmpArray = typedObj
+				} else {
+					tmpArray = make([]interface{}, 0, len(typedObj))
+					for _, val := range typedObj {
+						if res := Wrap(val).Search(hierarchy[target+1:]...); res != nil {
+							tmpArray = append(tmpArray, res.Data())
+						}
 					}
 				}
+
 				if len(tmpArray) == 0 {
 					return nil, nil
 				}
+
 				return &Container{tmpArray}, nil
 			}
 			index, err := strconv.Atoi(pathSeg)
