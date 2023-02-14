@@ -28,7 +28,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -76,6 +76,16 @@ var (
 	ErrInvalidBuffer = errors.New("input buffer contained invalid JSON")
 )
 
+var (
+	r1 *strings.Replacer
+	r2 *strings.Replacer
+)
+
+func init() {
+	r1 = strings.NewReplacer("~1", "/", "~0", "~")
+	r2 = strings.NewReplacer("~1", ".", "~0", "~")
+}
+
 //------------------------------------------------------------------------------
 
 // JSONPointerToSlice parses a JSON pointer path
@@ -86,7 +96,7 @@ var (
 // gabs paths, '~' needs to be encoded as '~0' and '/' needs to be encoded as
 // '~1' when these characters appear in a reference key.
 func JSONPointerToSlice(path string) ([]string, error) {
-	if len(path) == 0 {
+	if path == "" {
 		return nil, nil
 	}
 	if path[0] != '/' {
@@ -97,9 +107,7 @@ func JSONPointerToSlice(path string) ([]string, error) {
 	}
 	hierarchy := strings.Split(path, "/")[1:]
 	for i, v := range hierarchy {
-		v = strings.Replace(v, "~1", "/", -1)
-		v = strings.Replace(v, "~0", "~", -1)
-		hierarchy[i] = v
+		hierarchy[i] = r1.Replace(v)
 	}
 	return hierarchy, nil
 }
@@ -112,9 +120,7 @@ func JSONPointerToSlice(path string) ([]string, error) {
 func DotPathToSlice(path string) []string {
 	hierarchy := strings.Split(path, ".")
 	for i, v := range hierarchy {
-		v = strings.Replace(v, "~1", ".", -1)
-		v = strings.Replace(v, "~0", "~", -1)
-		hierarchy[i] = v
+		hierarchy[i] = r2.Replace(v)
 	}
 	return hierarchy
 }
@@ -141,24 +147,30 @@ func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Cont
 	object := g.Data()
 	for target := 0; target < len(hierarchy); target++ {
 		pathSeg := hierarchy[target]
-		if mmap, ok := object.(map[string]interface{}); ok {
-			object, ok = mmap[pathSeg]
-			if !ok {
+		switch typedObj := object.(type) {
+		case map[string]interface{}:
+			var ok bool
+			if object, ok = typedObj[pathSeg]; !ok {
 				return nil, fmt.Errorf("failed to resolve path segment '%v': key '%v' was not found", target, pathSeg)
 			}
-		} else if marray, ok := object.([]interface{}); ok {
+		case []interface{}:
 			if allowWildcard && pathSeg == "*" {
-				tmpArray := []interface{}{}
-				for _, val := range marray {
-					if (target + 1) >= len(hierarchy) {
-						tmpArray = append(tmpArray, val)
-					} else if res := Wrap(val).Search(hierarchy[target+1:]...); res != nil {
-						tmpArray = append(tmpArray, res.Data())
+				var tmpArray []interface{}
+				if (target + 1) >= len(hierarchy) {
+					tmpArray = typedObj
+				} else {
+					tmpArray = make([]interface{}, 0, len(typedObj))
+					for _, val := range typedObj {
+						if res := Wrap(val).Search(hierarchy[target+1:]...); res != nil {
+							tmpArray = append(tmpArray, res.Data())
+						}
 					}
 				}
+
 				if len(tmpArray) == 0 {
 					return nil, nil
 				}
+
 				return &Container{tmpArray}, nil
 			}
 			index, err := strconv.Atoi(pathSeg)
@@ -168,11 +180,11 @@ func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Cont
 			if index < 0 {
 				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' is invalid", target, pathSeg)
 			}
-			if len(marray) <= index {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
+			if len(typedObj) <= index {
+				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(typedObj))
 			}
-			object = marray[index]
-		} else {
+			object = typedObj[index]
+		default:
 			return nil, fmt.Errorf("failed to resolve path segment '%v': field '%v' was not found", target, pathSeg)
 		}
 	}
@@ -303,15 +315,16 @@ func (g *Container) Set(value interface{}, hierarchy ...string) (*Container, err
 
 	for target := 0; target < len(hierarchy); target++ {
 		pathSeg := hierarchy[target]
-		if mmap, ok := object.(map[string]interface{}); ok {
+		switch typedObj := object.(type) {
+		case map[string]interface{}:
 			if target == len(hierarchy)-1 {
 				object = value
-				mmap[pathSeg] = object
-			} else if object = mmap[pathSeg]; object == nil {
-				mmap[pathSeg] = map[string]interface{}{}
-				object = mmap[pathSeg]
+				typedObj[pathSeg] = object
+			} else if object = typedObj[pathSeg]; object == nil {
+				typedObj[pathSeg] = map[string]interface{}{}
+				object = typedObj[pathSeg]
 			}
-		} else if marray, ok := object.([]interface{}); ok {
+		case []interface{}:
 			if pathSeg == "-" {
 				if target < 1 {
 					return nil, errors.New("unable to append new array index at root of path")
@@ -321,8 +334,8 @@ func (g *Container) Set(value interface{}, hierarchy ...string) (*Container, err
 				} else {
 					object = map[string]interface{}{}
 				}
-				marray = append(marray, object)
-				if _, err := g.Set(marray, hierarchy[:target]...); err != nil {
+				typedObj = append(typedObj, object)
+				if _, err := g.Set(typedObj, hierarchy[:target]...); err != nil {
 					return nil, err
 				}
 			} else {
@@ -333,17 +346,17 @@ func (g *Container) Set(value interface{}, hierarchy ...string) (*Container, err
 				if index < 0 {
 					return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' is invalid", target, pathSeg)
 				}
-				if len(marray) <= index {
-					return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(marray))
+				if len(typedObj) <= index {
+					return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(typedObj))
 				}
 				if target == len(hierarchy)-1 {
 					object = value
-					marray[index] = object
-				} else if object = marray[index]; object == nil {
+					typedObj[index] = object
+				} else if object = typedObj[index]; object == nil {
 					return nil, fmt.Errorf("failed to resolve path segment '%v': field '%v' was not found", target, pathSeg)
 				}
 			}
-		} else {
+		default:
 			return nil, ErrPathCollision
 		}
 	}
@@ -499,7 +512,9 @@ func (g *Container) MergeFn(source *Container, collisionFn func(destination, sou
 	var recursiveFnc func(map[string]interface{}, []string) error
 	recursiveFnc = func(mmap map[string]interface{}, path []string) error {
 		for key, value := range mmap {
-			newPath := append(path, key)
+			newPath := make([]string, len(path))
+			copy(newPath, path)
+			newPath = append(newPath, key)
 			if g.Exists(newPath...) {
 				existingData := g.Search(newPath...).Data()
 				switch t := value.(type) {
@@ -519,11 +534,9 @@ func (g *Container) MergeFn(source *Container, collisionFn func(destination, sou
 						return err
 					}
 				}
-			} else {
+			} else if _, err := g.Set(value, newPath...); err != nil {
 				// path doesn't exist. So set the value
-				if _, err := g.Set(value, newPath...); err != nil {
-					return err
-				}
+				return err
 			}
 		}
 		return nil
@@ -702,7 +715,7 @@ func (g *Container) ArrayCountP(path string) (int, error) {
 
 //------------------------------------------------------------------------------
 
-func walkObject(path string, obj map[string]interface{}, flat map[string]interface{}, includeEmpty bool) {
+func walkObject(path string, obj, flat map[string]interface{}, includeEmpty bool) {
 	if includeEmpty && len(obj) == 0 {
 		flat[path] = struct{}{}
 	}
@@ -784,18 +797,18 @@ func (g *Container) flatten(includeEmpty bool) (map[string]interface{}, error) {
 
 // Bytes marshals an element to a JSON []byte blob.
 func (g *Container) Bytes() []byte {
-	if bytes, err := json.Marshal(g.Data()); err == nil {
-		return bytes
+	if data, err := json.Marshal(g.Data()); err == nil {
+		return data
 	}
 	return []byte("null")
 }
 
 // BytesIndent marshals an element to a JSON []byte blob formatted with a prefix
 // and indent string.
-func (g *Container) BytesIndent(prefix string, indent string) []byte {
+func (g *Container) BytesIndent(prefix, indent string) []byte {
 	if g.object != nil {
-		if bytes, err := json.MarshalIndent(g.Data(), prefix, indent); err == nil {
-			return bytes
+		if data, err := json.MarshalIndent(g.Data(), prefix, indent); err == nil {
+			return data
 		}
 	}
 	return []byte("null")
@@ -808,7 +821,7 @@ func (g *Container) String() string {
 
 // StringIndent marshals an element to a JSON string formatted with a prefix and
 // indent string.
-func (g *Container) StringIndent(prefix string, indent string) string {
+func (g *Container) StringIndent(prefix, indent string) string {
 	return string(g.BytesIndent(prefix, indent))
 }
 
@@ -823,7 +836,7 @@ func EncodeOptHTMLEscape(doEscape bool) EncodeOpt {
 }
 
 // EncodeOptIndent sets the encoder to indent the JSON output.
-func EncodeOptIndent(prefix string, indent string) EncodeOpt {
+func EncodeOptIndent(prefix, indent string) EncodeOpt {
 	return func(e *json.Encoder) {
 		e.SetIndent(prefix, indent)
 	}
@@ -885,7 +898,7 @@ func ParseJSONDecoder(decoder *json.Decoder) (*Container, error) {
 // ParseJSONFile reads a file and unmarshals the contents into a *Container.
 func ParseJSONFile(path string) (*Container, error) {
 	if len(path) > 0 {
-		cBytes, err := ioutil.ReadFile(path)
+		cBytes, err := os.ReadFile(path)
 		if err != nil {
 			return nil, err
 		}
