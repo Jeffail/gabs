@@ -76,6 +76,16 @@ var (
 	ErrInvalidBuffer = errors.New("input buffer contained invalid JSON")
 )
 
+var (
+	r1 *strings.Replacer
+	r2 *strings.Replacer
+)
+
+func init() {
+	r1 = strings.NewReplacer("~1", "/", "~0", "~")
+	r2 = strings.NewReplacer("~1", ".", "~0", "~")
+}
+
 //------------------------------------------------------------------------------
 
 // JSONPointerToSlice parses a JSON pointer path
@@ -97,9 +107,7 @@ func JSONPointerToSlice(path string) ([]string, error) {
 	}
 	hierarchy := strings.Split(path, "/")[1:]
 	for i, v := range hierarchy {
-		v = strings.ReplaceAll(v, "~1", "/")
-		v = strings.ReplaceAll(v, "~0", "~")
-		hierarchy[i] = v
+		hierarchy[i] = r1.Replace(v)
 	}
 	return hierarchy, nil
 }
@@ -112,9 +120,7 @@ func JSONPointerToSlice(path string) ([]string, error) {
 func DotPathToSlice(path string) []string {
 	hierarchy := strings.Split(path, ".")
 	for i, v := range hierarchy {
-		v = strings.ReplaceAll(v, "~1", ".")
-		v = strings.ReplaceAll(v, "~0", "~")
-		hierarchy[i] = v
+		hierarchy[i] = r2.Replace(v)
 	}
 	return hierarchy
 }
