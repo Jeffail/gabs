@@ -31,6 +31,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 //------------------------------------------------------------------------------
@@ -79,11 +81,17 @@ var (
 var (
 	r1 *strings.Replacer
 	r2 *strings.Replacer
+	// Cache for DotPathToSlice
+	dotPathCache *lru.Cache[string, []string]
+	// Cache for JSONPointerToSlice
+	jsonPointerCache *lru.Cache[string, []string]
 )
 
 func init() {
 	r1 = strings.NewReplacer("~1", "/", "~0", "~")
 	r2 = strings.NewReplacer("~1", ".", "~0", "~")
+	dotPathCache, _ = lru.New[string, []string](1024)
+	jsonPointerCache, _ = lru.New[string, []string](1024)
 }
 
 //------------------------------------------------------------------------------
@@ -105,10 +113,20 @@ func JSONPointerToSlice(path string) ([]string, error) {
 	if path == "/" {
 		return []string{""}, nil
 	}
+
+	item, ok := jsonPointerCache.Get(path)
+
+	if ok {
+		return item, nil
+	}
+
 	hierarchy := strings.Split(path, "/")[1:]
 	for i, v := range hierarchy {
 		hierarchy[i] = r1.Replace(v)
 	}
+
+	jsonPointerCache.Add(path, hierarchy)
+
 	return hierarchy, nil
 }
 
@@ -118,10 +136,20 @@ func JSONPointerToSlice(path string) ([]string, error) {
 // if it appears in the reference key. Likewise, '~' (%x7E) must be encoded
 // as '~0' since it is the escape character for encoding '.'.
 func DotPathToSlice(path string) []string {
+	item, ok := dotPathCache.Get(path)
+
+	if ok {
+		return item
+	}
+
 	hierarchy := strings.Split(path, ".")
+
 	for i, v := range hierarchy {
 		hierarchy[i] = r2.Replace(v)
 	}
+
+	dotPathCache.Add(path, hierarchy)
+
 	return hierarchy
 }
 
