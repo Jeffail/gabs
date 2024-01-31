@@ -47,7 +47,7 @@ var (
 	// the intended operation.
 	ErrNotObj = errors.New("not an object")
 
-	// ErrInvalidQuery is returned when a seach query was not valid.
+	// ErrInvalidQuery is returned when a search query was not valid.
 	ErrInvalidQuery = errors.New("invalid search query")
 
 	// ErrNotArray is returned when a target is not an array but needs to be for
