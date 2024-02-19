@@ -23,10 +23,9 @@ jobs:
         run: go test -count 100 ./...
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.0.1
+        uses: codecov/codecov-action@v3
         env:
-          token: c8792dcd-d828-4532-8a1e-115dd6ad8ebb
-          slug: wzlove/gabs
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   golangci-lint:
     runs-on: ubuntu-latest
