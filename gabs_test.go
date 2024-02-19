@@ -550,7 +550,7 @@ func TestDeletes(t *testing.T) {
 			}
 		}
 	}`))
-	jsonParsed.Delete()
+	_ = jsonParsed.Delete()
 	if err := jsonParsed.Delete("outter", "inner", "value2"); err != nil {
 		t.Error(err)
 	}
