@@ -1950,3 +1950,37 @@ func BenchmarkWildcardSearch(b *testing.B) {
 		val.Search([]string{"test", "*", "value"}...)
 	}
 }
+
+func BenchmarkJsonPointerToSlice(b *testing.B) {
+	samples := []string{
+		"/test/field",
+		"/field/test",
+		"/user/name",
+		"/user/email/address",
+		"/host/ip/addres",
+		"/host/os/family",
+		"/host/os/version",
+		"/test/field",
+		"/field/test",
+		"/user/name",
+		"/user/email/address",
+		"/host/ip/addres",
+		"/host/os/family",
+		"/host/os/version",
+		"/test/field",
+		"/field/test",
+		"/user/name",
+		"/user/email/address",
+		"/host/ip/addres",
+		"/host/os/family",
+		"/host/os/version",
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		for _, s := range samples {
+			JSONPointerToSlice(s)
+		}
+	}
+}
