@@ -890,6 +890,8 @@ func TestArrayConcat(t *testing.T) {
 	if result != expected {
 		t.Errorf("Non matched output: %v != %v", result, expected)
 	}
+	//
+	jsonObj.ArrayConcat(10)
 }
 
 func TestArrayConcatP(t *testing.T) {
