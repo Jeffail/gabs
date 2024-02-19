@@ -720,7 +720,7 @@ func walkObject(path string, obj, flat map[string]interface{}, includeEmpty bool
 		flat[path] = struct{}{}
 	}
 	for elePath, v := range obj {
-		if len(path) > 0 {
+		if path != "" {
 			elePath = path + "." + elePath
 		}
 		switch t := v.(type) {
@@ -740,7 +740,7 @@ func walkArray(path string, arr []interface{}, flat map[string]interface{}, incl
 	}
 	for i, ele := range arr {
 		elePath := strconv.Itoa(i)
-		if len(path) > 0 {
+		if path != "" {
 			elePath = path + "." + elePath
 		}
 		switch t := ele.(type) {
@@ -897,7 +897,7 @@ func ParseJSONDecoder(decoder *json.Decoder) (*Container, error) {
 
 // ParseJSONFile reads a file and unmarshals the contents into a *Container.
 func ParseJSONFile(path string) (*Container, error) {
-	if len(path) > 0 {
+	if path != "" {
 		cBytes, err := os.ReadFile(path)
 		if err != nil {
 			return nil, err

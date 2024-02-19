@@ -217,7 +217,7 @@ func TestJSONPointer(t *testing.T) {
 
 			var result *Container
 			result, err = root.JSONPointer(test.path)
-			if len(test.err) > 0 {
+			if test.err != "" {
 				if err == nil {
 					tt.Errorf("Expected error: %v", test.err)
 				} else if exp, act := test.err, err.Error(); exp != act {
