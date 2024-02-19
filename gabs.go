@@ -47,7 +47,7 @@ var (
 	// the intended operation.
 	ErrNotObj = errors.New("not an object")
 
-	// ErrInvalidQuery is returned when a seach query was not valid.
+	// ErrInvalidQuery is returned when a search query was not valid.
 	ErrInvalidQuery = errors.New("invalid search query")
 
 	// ErrNotArray is returned when a target is not an array but needs to be for
@@ -176,9 +176,6 @@ func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Cont
 			index, err := strconv.Atoi(pathSeg)
 			if err != nil {
 				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but segment value '%v' could not be parsed into array index: %v", target, pathSeg, err)
-			}
-			if index < 0 {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' is invalid", target, pathSeg)
 			}
 			if len(typedObj) <= index {
 				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(typedObj))
@@ -720,7 +717,7 @@ func walkObject(path string, obj, flat map[string]interface{}, includeEmpty bool
 		flat[path] = struct{}{}
 	}
 	for elePath, v := range obj {
-		if len(path) > 0 {
+		if path != "" {
 			elePath = path + "." + elePath
 		}
 		switch t := v.(type) {
@@ -740,7 +737,7 @@ func walkArray(path string, arr []interface{}, flat map[string]interface{}, incl
 	}
 	for i, ele := range arr {
 		elePath := strconv.Itoa(i)
-		if len(path) > 0 {
+		if path != "" {
 			elePath = path + "." + elePath
 		}
 		switch t := ele.(type) {
@@ -897,7 +894,7 @@ func ParseJSONDecoder(decoder *json.Decoder) (*Container, error) {
 
 // ParseJSONFile reads a file and unmarshals the contents into a *Container.
 func ParseJSONFile(path string) (*Container, error) {
-	if len(path) > 0 {
+	if path != "" {
 		cBytes, err := os.ReadFile(path)
 		if err != nil {
 			return nil, err

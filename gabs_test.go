@@ -217,7 +217,7 @@ func TestJSONPointer(t *testing.T) {
 
 			var result *Container
 			result, err = root.JSONPointer(test.path)
-			if len(test.err) > 0 {
+			if test.err != "" {
 				if err == nil {
 					tt.Errorf("Expected error: %v", test.err)
 				} else if exp, act := test.err, err.Error(); exp != act {
@@ -550,7 +550,7 @@ func TestDeletes(t *testing.T) {
 			}
 		}
 	}`))
-
+	_ = jsonParsed.Delete()
 	if err := jsonParsed.Delete("outter", "inner", "value2"); err != nil {
 		t.Error(err)
 	}
@@ -890,6 +890,8 @@ func TestArrayConcat(t *testing.T) {
 	if result != expected {
 		t.Errorf("Non matched output: %v != %v", result, expected)
 	}
+	//
+	jsonObj.ArrayConcat(10)
 }
 
 func TestArrayConcatP(t *testing.T) {
