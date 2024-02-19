@@ -177,9 +177,6 @@ func (g *Container) searchStrict(allowWildcard bool, hierarchy ...string) (*Cont
 			if err != nil {
 				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but segment value '%v' could not be parsed into array index: %v", target, pathSeg, err)
 			}
-			if index < 0 {
-				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' is invalid", target, pathSeg)
-			}
 			if len(typedObj) <= index {
 				return nil, fmt.Errorf("failed to resolve path segment '%v': found array but index '%v' exceeded target array size of '%v'", target, pathSeg, len(typedObj))
 			}
