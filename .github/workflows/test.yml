@@ -20,7 +20,7 @@ jobs:
         run: go mod tidy && git diff-index --quiet HEAD || { >&2 echo "Stale go.{mod,sum} detected. This can be fixed with 'go mod tidy'."; exit 1; }
 
       - name: Test
-        run: go test -count 100 ./...
+        run: go test -count 100 ./... -coverprofile="codecov.report"
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
