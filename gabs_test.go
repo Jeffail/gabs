@@ -2,11 +2,12 @@ package gabs
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
 	"testing"
+
+	json "github.com/Jeffail/gabs/v2/json"
 )
 
 func TestBasic(t *testing.T) {

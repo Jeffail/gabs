@@ -24,13 +24,14 @@ package gabs
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
+
+	json "github.com/Jeffail/gabs/v2/json"
 )
 
 //------------------------------------------------------------------------------
