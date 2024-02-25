@@ -2,11 +2,13 @@ package gabs
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
 	"testing"
+
+	json "github.com/Jeffail/gabs/v2/json"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBasic(t *testing.T) {
@@ -38,9 +40,7 @@ func TestBasic(t *testing.T) {
 		t.Errorf("Didn't find test2")
 	}
 
-	if result := val.Bytes(); !bytes.Equal(result, sample) {
-		t.Errorf("Wrong []byte conversion: %s != %s", result, sample)
-	}
+	require.JSONEq(t, string(sample), string(val.Bytes()))
 }
 
 func TestNilMethods(t *testing.T) {
@@ -227,9 +227,7 @@ func TestJSONPointer(t *testing.T) {
 			} else if err != nil {
 				tt.Fatal(err)
 			}
-			if exp, act := test.value, result.String(); exp != act {
-				tt.Errorf("Wrong result: %v != %v", act, exp)
-			}
+			require.JSONEq(t, test.value, result.String())
 		})
 	}
 }
@@ -577,9 +575,7 @@ func TestDeletes(t *testing.T) {
 	}
 
 	expected := `{"outter":{"alsoInner":{"value2":42,"value3":92},"another":{"value3":null},"inner":{"value1":10,"value3":32}}}`
-	if actual := jsonParsed.String(); actual != expected {
-		t.Errorf("Unexpected result from deletes: %v != %v", actual, expected)
-	}
+	require.JSONEq(t, expected, jsonParsed.String())
 }
 
 func TestDeletesWithArrays(t *testing.T) {
@@ -616,9 +612,7 @@ func TestDeletesWithArrays(t *testing.T) {
 	}
 
 	expected := `{"outter":[{"bar":[20,42,92],"foo":{"value1":10,"value2":22,"value3":32}},{"baz":{"value2":null,"value3":null}}]}`
-	if actual := jsonParsed.String(); actual != expected {
-		t.Errorf("Unexpected result from array deletes: %v != %v", actual, expected)
-	}
+	require.JSONEq(t, expected, jsonParsed.String())
 
 	jsonParsed, err = ParseJSON([]byte(rawJSON))
 	if err != nil {
@@ -629,9 +623,7 @@ func TestDeletesWithArrays(t *testing.T) {
 	}
 
 	expected = `{"outter":[{"bar":[20,42,92],"foo":{"value1":10,"value2":22,"value3":32}},{}]}`
-	if actual := jsonParsed.String(); actual != expected {
-		t.Errorf("Unexpected result from array deletes: %v != %v", actual, expected)
-	}
+	require.JSONEq(t, expected, jsonParsed.String())
 
 	jsonParsed, err = ParseJSON([]byte(rawJSON))
 	if err != nil {
@@ -642,9 +634,7 @@ func TestDeletesWithArrays(t *testing.T) {
 	}
 
 	expected = `{"outter":[{"bar":[20,42,92],"foo":{"value1":10,"value2":22,"value3":32}}]}`
-	if actual := jsonParsed.String(); actual != expected {
-		t.Errorf("Unexpected result from array deletes: %v != %v", actual, expected)
-	}
+	require.JSONEq(t, expected, jsonParsed.String())
 
 	jsonParsed, err = ParseJSON([]byte(rawJSON))
 	if err != nil {
@@ -655,9 +645,7 @@ func TestDeletesWithArrays(t *testing.T) {
 	}
 
 	expected = `{"outter":[{"bar":[42,92],"foo":{"value1":10,"value2":22,"value3":32}},{"baz":{"value1":null,"value2":null,"value3":null}}]}`
-	if actual := jsonParsed.String(); actual != expected {
-		t.Errorf("Unexpected result from array deletes: %v != %v", actual, expected)
-	}
+	require.JSONEq(t, expected, jsonParsed.String())
 
 	jsonParsed, err = ParseJSON([]byte(rawJSON))
 	if err != nil {
@@ -668,9 +656,7 @@ func TestDeletesWithArrays(t *testing.T) {
 	}
 
 	expected = `{"outter":[{"bar":[20,92],"foo":{"value1":10,"value2":22,"value3":32}},{"baz":{"value1":null,"value2":null,"value3":null}}]}`
-	if actual := jsonParsed.String(); actual != expected {
-		t.Errorf("Unexpected result from array deletes: %v != %v", actual, expected)
-	}
+	require.JSONEq(t, expected, jsonParsed.String())
 
 	jsonParsed, err = ParseJSON([]byte(rawJSON))
 	if err != nil {
@@ -681,9 +667,7 @@ func TestDeletesWithArrays(t *testing.T) {
 	}
 
 	expected = `{"outter":[{"bar":[20,42],"foo":{"value1":10,"value2":22,"value3":32}},{"baz":{"value1":null,"value2":null,"value3":null}}]}`
-	if actual := jsonParsed.String(); actual != expected {
-		t.Errorf("Unexpected result from array deletes: %v != %v", actual, expected)
-	}
+	require.JSONEq(t, expected, jsonParsed.String())
 }
 
 func TestExamples(t *testing.T) {
@@ -756,7 +740,7 @@ func TestExamples(t *testing.T) {
 	children := jsonParsed.S("array").Children()
 	for i, child := range children {
 		if expected[i] != child.Data().(string) {
-			t.Errorf("Child unexpected: %v != %v", expected[i], child.Data().(string))
+			t.Errorf("wrong value: %v != %v", expected[i], child.Data().(string))
 		}
 	}
 }
@@ -778,9 +762,7 @@ func TestSetAppendArray(t *testing.T) {
 		t.Fatal(err)
 	}
 	exp := `{"nested":{"source":["foo","bar","baz"]}}`
-	if act := gObj.String(); act != exp {
-		t.Errorf("Wrong result: %v != %v", act, exp)
-	}
+	require.JSONEq(t, exp, gObj.String())
 }
 
 func TestExamples2(t *testing.T) {
@@ -805,9 +787,7 @@ func TestExamples2(t *testing.T) {
 	}
 
 	expected := `{"outter":{"inner":{"value":10,"value2":20},"inner2":{"value3":30}}}`
-	if jsonObj.String() != expected {
-		t.Errorf("Non matched output: %v != %v", expected, jsonObj.String())
-	}
+	require.JSONEq(t, expected, jsonObj.String())
 
 	jsonObj = Wrap(map[string]interface{}{})
 
@@ -825,9 +805,7 @@ func TestExamples2(t *testing.T) {
       ]
     }`
 	result := jsonObj.StringIndent("    ", "  ")
-	if result != expected {
-		t.Errorf("Non matched output: %v != %v", expected, result)
-	}
+	require.JSONEq(t, result, jsonObj.String())
 }
 
 func TestExamples3(t *testing.T) {
@@ -842,9 +820,7 @@ func TestExamples3(t *testing.T) {
 	result := jsonObj.String()
 	expected := `{"foo":{"array":[10,20,30]}}`
 
-	if result != expected {
-		t.Errorf("Non matched output: %v != %v", result, expected)
-	}
+	require.JSONEq(t, result, expected)
 }
 
 func TestArrayConcat(t *testing.T) {
@@ -858,9 +834,7 @@ func TestArrayConcat(t *testing.T) {
 	result := jsonObj.String()
 	expected := `{"foo":{"array":[10,20,30]}}`
 
-	if result != expected {
-		t.Errorf("Non matched output: %v != %v", result, expected)
-	}
+	require.JSONEq(t, result, expected)
 
 	jsonObj = New()
 
@@ -872,9 +846,7 @@ func TestArrayConcat(t *testing.T) {
 	result = jsonObj.String()
 	expected = `{"foo":{"array":[10,20,30]}}`
 
-	if result != expected {
-		t.Errorf("Non matched output: %v != %v", result, expected)
-	}
+	require.JSONEq(t, result, expected)
 
 	jsonObj = New()
 
@@ -887,9 +859,7 @@ func TestArrayConcat(t *testing.T) {
 	result = jsonObj.String()
 	expected = `{"foo":{"array":[10,20,30]}}`
 
-	if result != expected {
-		t.Errorf("Non matched output: %v != %v", result, expected)
-	}
+	require.JSONEq(t, result, expected)
 }
 
 func TestArrayConcatP(t *testing.T) {
@@ -903,9 +873,7 @@ func TestArrayConcatP(t *testing.T) {
 	result := jsonObj.String()
 	expected := `{"foo":{"array":[10,20,30]}}`
 
-	if result != expected {
-		t.Errorf("Non matched output: %v != %v", result, expected)
-	}
+	require.JSONEq(t, result, expected)
 
 	jsonObj = New()
 
@@ -917,9 +885,7 @@ func TestArrayConcatP(t *testing.T) {
 	result = jsonObj.String()
 	expected = `{"foo":{"array":[10,20,30]}}`
 
-	if result != expected {
-		t.Errorf("Non matched output: %v != %v", result, expected)
-	}
+	require.JSONEq(t, result, expected)
 
 	jsonObj = New()
 
@@ -932,9 +898,7 @@ func TestArrayConcatP(t *testing.T) {
 	result = jsonObj.String()
 	expected = `{"foo":{"array":[10,20,30]}}`
 
-	if result != expected {
-		t.Errorf("Non matched output: %v != %v", result, expected)
-	}
+	require.JSONEq(t, result, expected)
 }
 
 func TestDotNotation(t *testing.T) {
@@ -972,13 +936,11 @@ func TestModify(t *testing.T) {
 		t.Errorf("Didn't find test.value")
 	}
 
-	if out := val.String(); out != `{"test":{"value":45},"test2":20}` {
-		t.Errorf("Incorrectly serialized: %v", out)
-	}
+	expected := `{"test":{"value":45},"test2":20}`
+	require.JSONEq(t, expected, val.String())
 
-	if out := val.Search("test").String(); out != `{"value":45}` {
-		t.Errorf("Incorrectly serialized: %v", out)
-	}
+	expected = `{"value":45}`
+	require.JSONEq(t, expected, val.Search("test").String())
 }
 
 func TestChildren(t *testing.T) {
@@ -999,9 +961,7 @@ func TestChildren(t *testing.T) {
 	expected := `{"objectOne":{"child":"hello world"},"objectThree":{"child":"hello world"}` +
 		`,"objectTwo":{"child":"hello world"}}`
 	received := json1.String()
-	if expected != received {
-		t.Errorf("json1: expected %v, received %v", expected, received)
-	}
+	require.JSONEq(t, expected, received)
 
 	json2, _ := ParseJSON([]byte(`{
 		"values":[
@@ -1045,14 +1005,10 @@ func TestChildren(t *testing.T) {
 	expected = `{"values":[{"child":"hello world","objectOne":{}},{"child":"hello world",` +
 		`"objectTwo":{}},{"child":"hello world","objectThree":{}}]}`
 	received = json2.String()
-	if expected != received {
-		t.Errorf("json2: expected %v, received %v", expected, received)
-	}
+	require.JSONEq(t, expected, received)
 
 	received = json3.String()
-	if expected != received {
-		t.Errorf("json3: expected %v, received %v", expected, received)
-	}
+	require.JSONEq(t, expected, received)
 }
 
 func TestChildrenMap(t *testing.T) {
@@ -1366,9 +1322,7 @@ func TestArrayReplace(t *testing.T) {
 	expected := `{"first":[1,2],"second":[3]}`
 	received := json1.String()
 
-	if expected != received {
-		t.Errorf("Wrong output, expected: %v, received: %v", expected, received)
-	}
+	require.JSONEq(t, expected, received)
 }
 
 func TestArraysRoot(t *testing.T) {
@@ -1455,19 +1409,13 @@ func TestShorthand(t *testing.T) {
 
 	compare := `{"outter":{"inner":{"value":5,"value2":10,"value3":11},"inner2":{}}` +
 		`,"outter2":{"inner":{"value":5,"value2":10,"value3":11}}}`
-	out := container.String()
-	if out != compare {
-		t.Errorf("wrong serialized structure: %v\n", out)
-	}
+	require.JSONEq(t, container.String(), compare)
 
 	compare2 := `{"outter":{"inner":{"value":6,"value2":10,"value3":11},"inner2":{}}` +
 		`,"outter2":{"inner":{"value":6,"value2":10,"value3":11}}}`
 
 	container.S("outter").S("inner").Set(6, "value")
-	out = container.String()
-	if out != compare2 {
-		t.Errorf("wrong serialized structure: %v\n", out)
-	}
+	require.JSONEq(t, container.String(), compare2)
 }
 
 func TestInvalid(t *testing.T) {
@@ -1518,10 +1466,7 @@ func TestCreation(t *testing.T) {
 
 	expected := `{"test":{"inner":{"array":["first element of the array",2,"three"],` +
 		`"first":10,"second":20}}}`
-	actual := container.String()
-	if actual != expected {
-		t.Errorf("received incorrect output from json object: %v\n", actual)
-	}
+	require.JSONEq(t, expected, container.String())
 }
 
 type outterJSON struct {
@@ -1693,15 +1638,11 @@ func TestLargeSampleWithHtmlEscape(t *testing.T) {
 
 	exp := string(sample)
 	res := string(val.EncodeJSON(EncodeOptIndent("", "\t")))
-	if exp != res {
-		t.Errorf("Wrong conversion without html escaping: %s != %s", res, exp)
-	}
+	require.JSONEq(t, exp, res)
 
 	exp = string(sampleWithHTMLEscape)
 	res = string(val.EncodeJSON(EncodeOptHTMLEscape(true), EncodeOptIndent("", "\t")))
-	if exp != res {
-		t.Errorf("Wrong conversion with html escaping: %s != %s", exp, res)
-	}
+	require.JSONEq(t, exp, res)
 }
 
 func TestMergeCases(t *testing.T) {
@@ -1787,9 +1728,7 @@ func TestMergeCases(t *testing.T) {
 			t.Errorf("[%d] Failed to merge: '%v': %v", i, test.first, err)
 		}
 
-		if exp, act := test.expected, firstContainer.String(); exp != act {
-			t.Errorf("[%d] Wrong result: %v != %v", i, act, exp)
-		}
+		require.JSONEq(t, test.expected, firstContainer.String())
 	}
 }
 
@@ -1806,9 +1745,7 @@ func TestMarshalsJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if exp, act := string(sample), string(marshaled); exp != act {
-		t.Errorf("Unexpected result: %v != %v", act, exp)
-	}
+	require.JSONEq(t, string(sample), string(marshaled))
 }
 
 func TestFlatten(t *testing.T) {
@@ -1857,9 +1794,8 @@ func TestFlatten(t *testing.T) {
 			t.Error(err)
 			continue
 		}
-		if exp, act := test.output, Wrap(res).String(); exp != act {
-			t.Errorf("Wrong result: %v != %v", act, exp)
-		}
+
+		require.JSONEq(t, test.output, Wrap(res).String())
 	}
 }
 
@@ -1909,9 +1845,8 @@ func TestFlattenIncludeEmpty(t *testing.T) {
 			t.Error(err)
 			continue
 		}
-		if exp, act := test.output, Wrap(res).String(); exp != act {
-			t.Errorf("Wrong result: %v != %v", act, exp)
-		}
+
+		require.JSONEq(t, test.output, Wrap(res).String())
 	}
 }
 
