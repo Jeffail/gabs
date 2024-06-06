@@ -1915,6 +1915,50 @@ func TestFlattenIncludeEmpty(t *testing.T) {
 	}
 }
 
+func TestWrapAgainstNew(t *testing.T) {
+	exp := New()
+
+	exp.Set(1, "A")
+	exp.SetP(2, "B")
+	exp.SetP("3", "Alpha.Beta")
+	exp.SetP(3.14, "Alpha.Gamma")
+
+	if err := exp.Delete("B"); err != nil {
+		t.Error(err)
+	}
+	if err := exp.DeleteP("Alpha.Beta"); err != nil {
+		t.Error(err)
+	}
+
+	type toWrap struct {
+		A     int
+		B     int
+		Alpha struct {
+			Beta  string
+			Gamma *float64
+		}
+	}
+
+	gamma := 3.14
+
+	act := Wrap(toWrap{A: 1, B: 2, Alpha: struct {
+		Beta  string
+		Gamma *float64
+	}{Beta: "3", Gamma: &gamma}})
+
+	if err := act.Delete("B"); err != nil {
+		panic(err)
+	}
+	if err := act.DeleteP("Alpha.Beta"); err != nil {
+		t.Error(err)
+	}
+
+	if exp.String() != act.String() {
+		t.Errorf("Wrong result: %v != %v", act, exp)
+	}
+
+}
+
 func BenchmarkChildren(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {

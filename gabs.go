@@ -870,7 +870,11 @@ func New() *Container {
 // Wrap an already unmarshalled JSON object (or a new map[string]interface{})
 // into a *Container.
 func Wrap(root interface{}) *Container {
-	return &Container{root}
+	b, _ := json.Marshal(root)
+	var m map[string]interface{}
+	json.Unmarshal(b, &m)
+
+	return &Container{m}
 }
 
 // ParseJSON unmarshals a JSON byte slice into a *Container.
