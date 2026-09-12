@@ -107,6 +107,15 @@ func JSONPointerToSlice(path string) ([]string, error) {
 	}
 	hierarchy := strings.Split(path, "/")[1:]
 	for i, v := range hierarchy {
+		for j := 0; j < len(v); j++ {
+			if v[j] != '~' {
+				continue
+			}
+			if j+1 == len(v) || (v[j+1] != '0' && v[j+1] != '1') {
+				return nil, fmt.Errorf("failed to resolve JSON pointer: invalid escape in token %q", v)
+			}
+			j++
+		}
 		hierarchy[i] = r1.Replace(v)
 	}
 	return hierarchy, nil
