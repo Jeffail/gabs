@@ -1950,3 +1950,29 @@ func BenchmarkWildcardSearch(b *testing.B) {
 		val.Search([]string{"test", "*", "value"}...)
 	}
 }
+
+func TestJSONPointerInvalidEscapes(t *testing.T) {
+	for _, path := range []string{"/~", "/~2", "/foo~bar", "/~0~", "/a/~9/b"} {
+		t.Run(path, func(t *testing.T) {
+			if _, err := JSONPointerToSlice(path); err == nil {
+				t.Error("expected an invalid escape error")
+			}
+			container := New()
+			if _, err := container.SetJSONPointer("value", path); err == nil {
+				t.Error("SetJSONPointer accepted invalid syntax")
+			}
+			if got := container.String(); got != "{}" {
+				t.Errorf("invalid pointer modified the document: %s", got)
+			}
+		})
+	}
+	for path, want := range map[string][]string{
+		"/~0": {"~"}, "/~1": {"/"}, "/~01": {"~1"},
+		"/~00": {"~0"}, "/~0~1": {"~/"}, "/café/~01": {"café", "~1"},
+	} {
+		got, err := JSONPointerToSlice(path)
+		if err != nil || !reflect.DeepEqual(got, want) {
+			t.Errorf("JSONPointerToSlice(%q) = %q, %v; want %q", path, got, err, want)
+		}
+	}
+}
