@@ -238,7 +238,7 @@ jsonOutput := jsonParsedObj.String()
 And to serialize a specific segment is as simple as:
 
 ```go
-jsonParsedObj := gabs.ParseJSON([]byte(`{
+jsonParsedObj, _ := gabs.ParseJSON([]byte(`{
 	"outer":{
 		"values":{
 			"first":10,
@@ -257,8 +257,8 @@ jsonOutput := jsonParsedObj.Search("outer").String()
 You can merge a JSON structure into an existing one, where collisions will be converted into a JSON array.
 
 ```go
-jsonParsed1, _ := ParseJSON([]byte(`{"outer":{"value1":"one"}}`))
-jsonParsed2, _ := ParseJSON([]byte(`{"outer":{"inner":{"value3":"three"}},"outer2":{"value2":"two"}}`))
+jsonParsed1, _ := gabs.ParseJSON([]byte(`{"outer":{"value1":"one"}}`))
+jsonParsed2, _ := gabs.ParseJSON([]byte(`{"outer":{"inner":{"value3":"three"}},"outer2":{"value2":"two"}}`))
 
 jsonParsed1.Merge(jsonParsed2)
 // Becomes `{"outer":{"inner":{"value3":"three"},"value1":"one"},"outer2":{"value2":"two"}}`
@@ -267,8 +267,8 @@ jsonParsed1.Merge(jsonParsed2)
 Arrays are merged:
 
 ```go
-jsonParsed1, _ := ParseJSON([]byte(`{"array":["one"]}`))
-jsonParsed2, _ := ParseJSON([]byte(`{"array":["two"]}`))
+jsonParsed1, _ := gabs.ParseJSON([]byte(`{"array":["one"]}`))
+jsonParsed2, _ := gabs.ParseJSON([]byte(`{"array":["two"]}`))
 
 jsonParsed1.Merge(jsonParsed2)
 // Becomes `{"array":["one", "two"]}`
