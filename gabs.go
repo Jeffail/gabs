@@ -246,7 +246,7 @@ func (g *Container) ExistsP(path string) bool {
 // Index attempts to find and return an element within a JSON array by an index.
 func (g *Container) Index(index int) *Container {
 	if array, ok := g.Data().([]interface{}); ok {
-		if index >= len(array) {
+		if index < 0 || index >= len(array) {
 			return nil
 		}
 		return &Container{array[index]}
@@ -373,7 +373,7 @@ func (g *Container) SetP(value interface{}, path string) (*Container, error) {
 // SetIndex attempts to set a value of an array element based on an index.
 func (g *Container) SetIndex(value interface{}, index int) (*Container, error) {
 	if array, ok := g.Data().([]interface{}); ok {
-		if index >= len(array) {
+		if index < 0 || index >= len(array) {
 			return nil, ErrOutOfBounds
 		}
 		array[index] = value

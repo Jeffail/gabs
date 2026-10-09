@@ -1645,6 +1645,66 @@ func TestBadIndexes(t *testing.T) {
 	}
 }
 
+func TestNegativeIndexes(t *testing.T) {
+	methods := []struct {
+		name string
+		call func(*Container, int) (*Container, error)
+	}{
+		{"Index", func(g *Container, index int) (*Container, error) {
+			return g.Index(index), nil
+		}},
+		{"SetIndex", func(g *Container, index int) (*Container, error) {
+			return g.SetIndex("replacement", index)
+		}},
+		{"ObjectI", (*Container).ObjectI},
+		{"ArrayI", (*Container).ArrayI},
+		{"ArrayOfSizeI", func(g *Container, index int) (*Container, error) {
+			return g.ArrayOfSizeI(1, index)
+		}},
+	}
+	inputs := []struct {
+		name  string
+		value interface{}
+	}{
+		{"populated", []interface{}{"first", "last"}},
+		{"empty", []interface{}{}},
+		{"nilArray", []interface{}(nil)},
+		{"null", nil},
+		{"scalar", "value"},
+		{"object", map[string]interface{}{"field": "value"}},
+	}
+	minInt := -int(^uint(0)>>1) - 1
+	for _, method := range methods {
+		for _, input := range inputs {
+			for _, index := range []int{-1, minInt} {
+				t.Run(fmt.Sprintf("%s/%s/%d", method.name, input.name, index), func(t *testing.T) {
+					defer func() {
+						if recovered := recover(); recovered != nil {
+							t.Fatalf("negative index panicked: %v", recovered)
+						}
+					}()
+					g := Wrap(input.value)
+					before := g.String()
+					var expectedErr error
+					if method.name != "Index" {
+						expectedErr = ErrNotArray
+						if _, ok := input.value.([]interface{}); ok {
+							expectedErr = ErrOutOfBounds
+						}
+					}
+					result, err := method.call(g, index)
+					if result != nil || err != expectedErr {
+						t.Errorf("expected nil and %v, got %v and %v", expectedErr, result, err)
+					}
+					if after := g.String(); after != before {
+						t.Errorf("container changed: %s != %s", after, before)
+					}
+				})
+			}
+		}
+	}
+}
+
 func TestNilSet(t *testing.T) {
 	obj := Container{nil}
 	if _, err := obj.Set("bar", "foo"); err != nil {
